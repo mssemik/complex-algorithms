@@ -3,6 +3,6 @@ $git status
 # Exclude target direcories
 **/target/**
 # Exclude .idea directory related with IDE
-./idea
+.idea
 $git status
 
