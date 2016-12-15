@@ -9,8 +9,6 @@ import scala.util.parsing.combinator.RegexParsers
   * Created by mth on 12/5/16.
   */
 class MTXParser extends RegexParsers with Serializable {
-  var metadata = Some()
-  var dataSize = Some()
 
   def graphMetadataHeader = "%[ ]?MatrixMarket".r
 

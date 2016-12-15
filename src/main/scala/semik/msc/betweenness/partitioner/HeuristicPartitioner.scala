@@ -1,7 +1,6 @@
 package semik.msc.betweenness.partitioner
 
 import org.apache.spark.Partitioner
-import org.apache.spark.rdd.RDD
 
 /**
   * Created by mth on 12/7/16.
@@ -10,20 +9,34 @@ object HeuristicPartitioner {
 
 }
 
-class BalancedPartitioner(paritions: Int, rdd: RDD) extends Partitioner {
+class BalancedPartitioner(partitions: Int) extends Partitioner {
 
-  require(paritions > 0)
+  require(partitions > 0)
 
-  override def numPartitions: Int = paritions
+  val partStat = new PartitoningStats(partitions)
 
-  override def getPartition(key: Any): Int =
-    rdd.mapPartitionsWithIndex((index, iter) => Array((index, iter.size)).iterator, true).sortBy(p => p._2).first._1
+  override def numPartitions: Int = partitions
+
+  override def getPartition(key: Any): Int = {
+    val part = partStat.getSmallestPartition
+    partStat.addElement(part)
+    part
+  }
 }
 
 class ChunkingPartitioner(partitions: Int, capacity: Int) extends Partitioner {
+
+  require(partitions > 0)
+
+  val partStat = new PartitoningStats(partitions)
+
   override def numPartitions: Int = partitions
 
-  override def getPartition(key: Any): Int = Math.ceil(partitions / capacity).toInt
+  override def getPartition(key: Any): Int = {
+    val part = Math.ceil(partStat.getNumberOfElements / capacity).toInt
+    partStat.addElement(part)
+    part
+  }
 }
 
 class HashingPartitioner(partitions: Int) extends Partitioner {
@@ -32,6 +45,6 @@ class HashingPartitioner(partitions: Int) extends Partitioner {
   override def getPartition(key: Any): Int = (key.hashCode % partitions) + 1
 }
 
-abstract class WeightedGreedyPartitioner extends Partitioner {
+trait WeightedGreedyPartitioner extends Partitioner {
 
 }
