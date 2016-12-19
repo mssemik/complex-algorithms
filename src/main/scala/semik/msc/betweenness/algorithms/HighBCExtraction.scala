@@ -4,6 +4,7 @@ import org.apache.spark.Partitioner
 import org.apache.spark.graphx.{Graph, VertexId}
 import org.apache.spark.rdd.RDD
 import semik.msc.GraphPropTags
+import semik.msc.graph.{Edge, Vertex}
 import semik.msc.loaders.GraphLoader
 
 import scala.collection.convert.Wrappers.MutableMapWrapper
@@ -14,19 +15,23 @@ import scala.collection.mutable
   */
 class HighBCExtraction(graph: Graph[_, _], partitioner: Partitioner) {
 
-  def prepareDataByPartitionMap = {
-    val outgoingEdges = graph.edges.groupBy(_.srcId).mapPartitions(iter => iter.map(e => (e._1, Map(GraphPropTags.OutgoingEdges -> e._2.map(i => (i.dstId, i.attr)).toMap))))
-    graph.vertices.fullOuterJoin(outgoingEdges).mapPartitions(iter => {
-      iter.map({ case (id, (op1, op2)) => (id, op1.getOrElse(Map()).asInstanceOf[Map[String, _]] ++: op2.getOrElse(Map()).asInstanceOf[Map[String, _]]) })
-    })
+  def outgoingEdges = graph.edges.groupBy(_.srcId).mapPartitions(iter => iter.map(e => (e._1, Map(GraphPropTags.OutgoingEdges -> e._2.map(i => Edge(i.dstId)).toSeq))))
+
+  def incomingEdges = graph.edges.groupBy(_.dstId).mapPartitions(iter => iter.map(e => (e._1, Map(GraphPropTags.IncomingEdges -> e._2.map(i => Edge(i.srcId)).toSeq))))
+
+  def vertices = {
+    incomingEdges.fullOuterJoin(outgoingEdges)
+      .map({ case (id, (m1, m2)) =>
+        (id, Vertex(id,
+          m1.getOrElse(Map()).get(GraphPropTags.IncomingEdges).getOrElse(List()),
+          m2.getOrElse(Map()).get(GraphPropTags.OutgoingEdges).getOrElse(List())
+        ))
+      })
   }
 
-  def prepareDataBySimpleMap = {
-    val outgoingEdges = graph.edges.groupBy(_.srcId).map(e => (e._1, Map(GraphPropTags.OutgoingEdges -> e._2.map(i => (i.dstId, i.attr)).toMap)))
-    graph.vertices.fullOuterJoin(outgoingEdges)
-      .map({ case (id, (op1, op2)) => (id, op1.getOrElse(Map()).asInstanceOf[Map[String, _]] ++: op2.getOrElse(Map()).asInstanceOf[Map[String, _]]) })
+  def repartition
 
-  }
+  def repartitionedVertices(partitioner: Partitioner) = vertices.foreachPartition()
 
   def computeLocalVertices(graph: RDD[(VertexId, Map[String, Any])]) =
     graph.mapPartitions(v => {
@@ -34,7 +39,8 @@ class HighBCExtraction(graph: Graph[_, _], partitioner: Partitioner) {
 
       v.map({ case (idx, map) => {
         (idx, map.updated(GraphPropTags.OutgoingEdges, map.get(GraphPropTags.OutgoingEdges).get.asInstanceOf[Map[Long, Map[String, Any]]].map({ case (inIdx, inMap) => (inIdx, inMap.updated(GraphPropTags.RemoteVertex, vertexSet.contains(inIdx))) })))
-      }})
+      }
+      })
     })
 
 }

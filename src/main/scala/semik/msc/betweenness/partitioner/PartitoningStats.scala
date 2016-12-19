@@ -9,6 +9,8 @@ class PartitoningStats(val numPartition: Int) extends Serializable {
 
   val partitionSizes = Array.fill(numPartition)(0).zipWithIndex
 
+  var mappedVertex: Map[Long, Int]
+
   def addElement(part: Int) = {
     require(part < numPartition)
 

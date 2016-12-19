@@ -9,15 +9,15 @@ object HeuristicPartitioner {
 
 }
 
-class BalancedPartitioner(partitions: Int) extends Partitioner {
+class BalancedPartitioner(partitions: Int) extends Serializable {
 
   require(partitions > 0)
 
   val partStat = new PartitoningStats(partitions)
 
-  override def numPartitions: Int = partitions
+  def numPartitions: Int = partitions
 
-  override def getPartition(key: Any): Int = {
+  def getPartition(key: Any): Int = {
     val part = partStat.getSmallestPartition
     partStat.addElement(part)
     part
