@@ -5,11 +5,9 @@ import org.roaringbitmap.buffer.MutableRoaringArray
 /**
   * Created by mth on 12/11/16.
   */
-class PartitoningStats(val numPartition: Int) extends Serializable {
+class PartitioningStats(val numPartition: Int) extends Serializable {
 
   val partitionSizes = Array.fill(numPartition)(0).zipWithIndex
-
-  var mappedVertex: Map[Long, Int]
 
   def addElement(part: Int) = {
     require(part < numPartition)

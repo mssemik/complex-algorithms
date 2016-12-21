@@ -1,10 +1,8 @@
 package semik.msc
 
-import org.apache.spark.graphx.{Edge, PartitionStrategy}
-import org.apache.spark.sql.SparkSession
-import org.apache.spark.streaming.{Seconds, StreamingContext}
 import org.apache.spark.{SparkConf, SparkContext}
-import semik.msc.betweenness.partitioner.BalancedPartitioner
+import semik.msc.betweenness.algorithms.HighBCExtraction
+import semik.msc.betweenness.partitioner.{DeterministicGreedy, LinearGreedyFunction}
 import semik.msc.loaders.mtx.MTXGraphLoader
 
 /**
@@ -28,19 +26,13 @@ object SurveyExecutor {
 
     val graph = parser.loadDataFromFile("/media/mth/Data/repositories/Master Thesis code/soc-BlogCatalog1.mtx")
 
-    val vertices = graph.edges.groupBy(e => e.srcId).map(e => (e._1, Map("edges" -> e._2)))
+    val verts = graph.vertices
+    val parts = Math.ceil(verts.countApprox(1000).getFinalValue().mean / 150).toInt
 
-    val reaprtitionedVertices = vertices.partitionBy(new BalancedPartitioner(12))
-    println("Vertices: " + reaprtitionedVertices.count())
+    val pertitioner = new DeterministicGreedy(parts, 200, LinearGreedyFunction)
 
-    println("Number of part: " + reaprtitionedVertices.getNumPartitions)
-    println("Size of parts:")
-    reaprtitionedVertices.mapPartitionsWithIndex({ (idx, iter) => Array((idx, iter.size)).iterator}).collect().foreach(t => println("" + t._1 + ": " + t._2))
+    val alg = new HighBCExtraction(graph, pertitioner)
 
-    //    println("Edges: " + graph.edges.count())
-
-
-
-    val f = 1
+    alg.repartition
   }
 }

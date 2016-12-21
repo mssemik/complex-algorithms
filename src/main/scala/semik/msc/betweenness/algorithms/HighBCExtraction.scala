@@ -1,19 +1,15 @@
 package semik.msc.betweenness.algorithms
 
-import org.apache.spark.Partitioner
 import org.apache.spark.graphx.{Graph, VertexId}
 import org.apache.spark.rdd.RDD
 import semik.msc.GraphPropTags
+import semik.msc.betweenness.partitioner.HeuristicPartitioner
 import semik.msc.graph.{Edge, Vertex}
-import semik.msc.loaders.GraphLoader
-
-import scala.collection.convert.Wrappers.MutableMapWrapper
-import scala.collection.mutable
 
 /**
   * Created by mth on 12/13/16.
   */
-class HighBCExtraction(graph: Graph[_, _], partitioner: Partitioner) {
+class HighBCExtraction(graph: Graph[_, _], partitioner: HeuristicPartitioner) {
 
   def outgoingEdges = graph.edges.groupBy(_.srcId).mapPartitions(iter => iter.map(e => (e._1, Map(GraphPropTags.OutgoingEdges -> e._2.map(i => Edge(i.dstId)).toSeq))))
 
@@ -29,9 +25,7 @@ class HighBCExtraction(graph: Graph[_, _], partitioner: Partitioner) {
       })
   }
 
-  def repartition
-
-  def repartitionedVertices(partitioner: Partitioner) = vertices.foreachPartition()
+  def repartition = partitioner.computePartitions(vertices)
 
   def computeLocalVertices(graph: RDD[(VertexId, Map[String, Any])]) =
     graph.mapPartitions(v => {
