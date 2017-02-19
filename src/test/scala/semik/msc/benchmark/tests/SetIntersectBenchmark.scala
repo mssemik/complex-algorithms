@@ -13,15 +13,30 @@ class SetIntersectBenchmark(val numberOfExecutions: Int, sizeOfSets: Int, f: (Se
   var set2: Set[Long] = Set()
   var intersectSet: Set[Long] = Set()
 
-  override def preExecute: Unit = {
-    val rand = new Random()
-    val range = sizeOfSets * 3
+  val rand: Random = new Random()
 
-    for (i <- (1 to sizeOfSets)) {
+  def fillSet1 = {
+    val range = sizeOfSets * 3
+    while (set1.size < sizeOfSets)
       set1 = set1 + rand.nextInt(range)
+  }
+
+  def fillSet2 = {
+    val range = sizeOfSets * 3
+    while (set2.size < sizeOfSets)
       set2 = set2 + rand.nextInt(range)
+  }
+
+  def fillIntersectSet = {
+    val range = sizeOfSets * 3
+    while (intersectSet.size < sizeOfSets)
       intersectSet = intersectSet + rand.nextInt(range)
-    }
+  }
+
+  override def preExecute: Unit = {
+    fillSet1
+    fillSet2
+    fillIntersectSet
   }
 
   override def execute(round: Int): Unit = {
@@ -29,8 +44,8 @@ class SetIntersectBenchmark(val numberOfExecutions: Int, sizeOfSets: Int, f: (Se
   }
 
   override def postExecute: Unit = {
-    set1 = null
-    set2 = null
-    intersectSet = null
+    set1 = Set()
+    set2 = Set()
+    intersectSet = Set()
   }
 }

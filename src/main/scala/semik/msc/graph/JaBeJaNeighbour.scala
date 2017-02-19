@@ -7,6 +7,6 @@ import org.apache.spark.graphx.VertexId
 class JaBeJaNeighbour[ND, @specialized ED] (
     val edgeAttr: ED,
     val nbhId: VertexId,
-    val nbtAttr: ND) extends Serializable{
+    val nbtAttr: ND) extends Serializable {
 
 }

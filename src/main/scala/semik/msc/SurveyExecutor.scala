@@ -1,8 +1,11 @@
 package semik.msc
 
+import org.apache.spark.graphx.GraphLoader
+import org.apache.spark.graphx.util.GraphGenerators
 import org.apache.spark.{SparkConf, SparkContext}
-import semik.msc.betweenness.algorithms.HighBCExtraction
-import semik.msc.betweenness.partitioner.{DeterministicGreedy, LinearGreedyFunction}
+import semik.msc.random.RandomWeightWalk
+import semik.msc.random.config.RandomWeightWalkConfig
+//import semik.msc.betweenness.partitioner.JaBeJaPartitioner
 import semik.msc.loaders.mtx.MTXGraphLoader
 
 /**
@@ -12,27 +15,24 @@ object SurveyExecutor {
 
   def main(args : Array[String]) = {
     val sConf = new SparkConf(true).setAppName("complex-algorithms")
-      .setMaster("spark://lenovoy50-70:7077")
-      .set("spark.executor.memory", "512m")
-      .set("spark.executor.instances", "4")
+      .setMaster("spark://192.168.1.21:7077")
+
 
     implicit val sc = new SparkContext(sConf)
+    sc.setCheckpointDir("/home/mth/sparkChpDir/")
 
-    startSurvey
+    startSurvey(100, 0.02)
   }
 
-  def startSurvey(implicit sc:SparkContext) = {
-    val parser = new MTXGraphLoader
+  def startSurvey(size: Int, qn: Double)(implicit sc:SparkContext) = {
+    val graph = GraphGenerators.logNormalGraph(sc, size, 16, 2.5)
 
-    val graph = parser.loadDataFromFile("/media/mth/Data/repositories/Master Thesis code/soc-BlogCatalog1.mtx")
+    val dd = new RandomWeightWalk(qn)
+    val pp = dd.prepareWalk(graph)
 
-    val verts = graph.vertices
-    val parts = Math.ceil(verts.countApprox(1000).getFinalValue().mean / 150).toInt
+    println("Max W: " + pp.vertices.map(v => v._2.vertexWeight).max)
+    println("Min W: " + pp.vertices.map(v => v._2.vertexWeight).min)
+    println("Mean W: " + pp.vertices.map(v => v._2.vertexWeight).mean())
 
-    val pertitioner = new DeterministicGreedy(parts, 200, LinearGreedyFunction)
-
-    val alg = new HighBCExtraction(graph, pertitioner)
-
-    alg.repartition
   }
 }
