@@ -3,7 +3,7 @@ package semik.msc
 import org.apache.spark.graphx.GraphLoader
 import org.apache.spark.graphx.util.GraphGenerators
 import org.apache.spark.{SparkConf, SparkContext}
-import semik.msc.random.RandomWeightWalk
+import semik.msc.random.{ContinuousTimeRandomWalk, RandomWeightWalk}
 import semik.msc.random.config.RandomWeightWalkConfig
 //import semik.msc.betweenness.partitioner.JaBeJaPartitioner
 import semik.msc.loaders.mtx.MTXGraphLoader
@@ -21,18 +21,22 @@ object SurveyExecutor {
     implicit val sc = new SparkContext(sConf)
     sc.setCheckpointDir("/home/mth/sparkChpDir/")
 
-    startSurvey(100, 0.02)
+    startSurvey(args(0).toInt, args(1).toDouble)
   }
 
   def startSurvey(size: Int, qn: Double)(implicit sc:SparkContext) = {
     val graph = GraphGenerators.logNormalGraph(sc, size, 16, 2.5)
 
-    val dd = new RandomWeightWalk(qn)
-    val pp = dd.prepareWalk(graph)
+//    val dd = new RandomWeightWalk(qn)
+//    val pp = dd.prepareWalk(graph)
+//
+//    println("Max W: " + pp.vertices.map(v => v._2.vertexWeight).max)
+//    println("Min W: " + pp.vertices.map(v => v._2.vertexWeight).min)
+//    println("Mean W: " + pp.vertices.map(v => v._2.vertexWeight).mean())
+//
+//    pp
 
-    println("Max W: " + pp.vertices.map(v => v._2.vertexWeight).max)
-    println("Min W: " + pp.vertices.map(v => v._2.vertexWeight).min)
-    println("Mean W: " + pp.vertices.map(v => v._2.vertexWeight).mean())
-
+    val ctrw = new ContinuousTimeRandomWalk(graph)
+    ctrw.designateRandomVertices(qn)
   }
 }

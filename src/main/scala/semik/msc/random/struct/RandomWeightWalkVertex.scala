@@ -9,7 +9,7 @@ import semik.msc.random.{MessageType, RWWVertexState, VertexState}
 class RandomWeightWalkVertex( val vertexWeight: Double,
                               val neighbours: Array[RandomWeightWalkNeighbour],
                               val selected: Option[VertexId] = None,
-                              val responses: Option[Set[(VertexId, Boolean)]] = None) extends Serializable {
+                              val responses: Option[List[(VertexId, Boolean)]] = None) extends Serializable {
 
   private lazy val neighbourMap = neighbours.zipWithIndex.map(n => (n._1.vertexId, n._2)).toMap
 
@@ -25,6 +25,6 @@ object RandomWeightWalkVertex extends Serializable {
   def apply( vertexWeight: Double,
              neighbours: Array[RandomWeightWalkNeighbour],
              selected: Option[VertexId] = None,
-             responses: Option[Set[(VertexId, Boolean)]] = None): RandomWeightWalkVertex =
+             responses: Option[List[(VertexId, Boolean)]] = None): RandomWeightWalkVertex =
     new RandomWeightWalkVertex(vertexWeight, neighbours, selected, responses)
 }

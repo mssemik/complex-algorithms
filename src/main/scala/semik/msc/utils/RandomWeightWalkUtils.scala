@@ -12,7 +12,7 @@ import scala.util.Random
 object RandomWeightWalkUtils {
 
   def prepareGraph[VD, ED](graph: Graph[VD, ED]) =
-    graph.partitionBy(PartitionStrategy.EdgePartition2D).groupEdges((_, a) => a).ops.removeSelfEdges()
+    graph.partitionBy(PartitionStrategy.EdgePartition2D).ops.removeSelfEdges().ops.convertToCanonicalEdges((_, a) => a)
 
   def initializeVertices[VD, ED](graph: Graph[VD, ED]): Graph[RandomWeightWalkVertex, ED] = {
     val rho = (graph.ops.degrees.map(_._2).max() * 1.3).ceil
