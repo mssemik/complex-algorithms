@@ -4,6 +4,7 @@ import java.io.Serializable
 
 import org.apache.spark.graphx._
 import semik.msc.neighbourhood.VertexNeighbourhood
+import semik.msc.tools.GraphSimplifier
 
 import scala.util.Random
 
@@ -12,14 +13,9 @@ import scala.util.Random
   */
 class ContinuousTimeRandomWalk[VD, ED](graph: Graph[VD, ED]) extends Serializable {
 
-  lazy val simpleGraph = simplifyGraph(graph)
+  val graphSimplifier = new GraphSimplifier[VD, ED](graph)
 
-  private def simplifyGraph(graph: Graph[VD, ED]) = {
-    val withoutMultiEdges = graph.ops.convertToCanonicalEdges((e, _) => e)
-    val simpleGraph = withoutMultiEdges.ops.removeSelfEdges().groupEdges((e,_) => e)
-    withoutMultiEdges.unpersist()
-    simpleGraph
-  }
+  lazy val simpleGraph = graphSimplifier.simpleNaiveGraph
 
   private def prepareVertexData(initTemp: Double, numRandomVertex: Int) = {
     val nearestNbh = VertexNeighbourhood(simpleGraph).nearestNeighbourhood
@@ -74,7 +70,13 @@ class ContinuousTimeRandomWalk[VD, ED](graph: Graph[VD, ED]) extends Serializabl
       messages = g.aggregateMessages[List[CTRWMessage]](sendMsg(_), _ ++ _).cache()
       activeMessages = messages.map(_._2.size).reduce(_ + _)
 
-      println(" #msg: " + activeMessages)
+      val kkk = messages.flatMap(v => v._2.map(m => m.temperature))
+
+      val min = if (kkk.isEmpty()) 0 else kkk.min()
+      val max = if (kkk.isEmpty()) 0 else kkk.max()
+      val mean = if (kkk.isEmpty()) 0 else kkk.mean()
+
+      println("Max: " + max + ", min: " + min + ", mean: " + mean + ", #msg: " + activeMessages)
 
       oldMessages.unpersist(false)
       prevG.unpersist(false)
