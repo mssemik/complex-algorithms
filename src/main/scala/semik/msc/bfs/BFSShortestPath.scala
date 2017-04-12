@@ -17,9 +17,7 @@ class BFSShortestPath[VD: ClassTag, ED, MD: ClassTag](vPredicate: VertexPredicat
   def computeSingleSelectedSourceBFS(graph: Graph[VD, ED], source: VertexId, undirected: Boolean = true): Graph[VD, ED] = {
     val startTime = System.nanoTime()
 
-    val initGraph = graph.mapVertices((vId, attr) => vPredicate.getInitialData(vId, attr)(source)).cache()
-
-//    initGraph.vertices.collect().foreach({ case (vId, v) => println(vId + " -> " + v)})
+    val initGraph = graph.mapVertices((vId, attr) => vPredicate.getInitialData(vId, attr)(source)).cache
 
     val result = initGraph.ops.pregel[MD](processor.initialMessage)(
       vPredicate.applyMessages,

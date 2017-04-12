@@ -15,14 +15,11 @@ object StartAlgorithm {
 
   def main(args: Array[String]): Unit = {
 
-    val sConf = new SparkConf(true).setAppName("complex-algorithms")
-         .setMaster("spark://192.168.1.21:7077")
-
+    val sConf = new SparkConf().setAppName("complex-algorithms")
 
     val sc = new SparkContext(sConf)
-    sc.setCheckpointDir("/home/mth/sparkChpDir/")
 
-    bfs(args(0).toInt, args(1).toInt, 2.5, 0.7)(sc)
+    bfs(args(0).toInt, args(1).toInt, 0.8, 0.6)(sc)
   }
 
   def bfs(size: Int, part: Int, mu:Double, sigma: Double)(sc: SparkContext) = {
@@ -31,6 +28,8 @@ object StartAlgorithm {
 
     val tt = new EdmondsBC[Long, Int](graph)
 
-    tt.run
+    val bcVector = tt.computeBC
+
+    bcVector.collect().foreach({ case (id, bc) => println("id: " + id + " => " + bc)})
   }
 }

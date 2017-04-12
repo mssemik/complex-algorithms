@@ -6,7 +6,7 @@ import org.apache.spark.graphx.VertexId
   * Created by mth on 3/13/17.
   */
 class EdmondsVertex(val preds: List[VertexId], val sigma: Int, val depth: Int, val delta: Double, val bc:Double) extends Serializable {
-  val rooted = preds.nonEmpty
+  val explored = preds.nonEmpty
 
   override def toString = s"EdmondsVertex($sigma, $depth, $delta, $bc)"
 }
