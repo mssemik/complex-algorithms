@@ -22,6 +22,8 @@ object StartAlgorithm {
 
     val sc = new SparkContext(sConf)
 
+    sc.setCheckpointDir("hdfs://192.168.1.21:9000/chDir")
+
 //    bfs(args(0).toInt, args(1).toInt, 0.8, 0.6)(sc)
 //    bfsFile(args(0))(sc)
     ctrw(args(0).toInt, args(1).toInt)(sc)

@@ -18,7 +18,7 @@ class CTRWProcessor[VD, ED](graph: Graph[VD, ED], factory: Factory[CTRWVertex, C
     simpleGraph.outerJoinVertices(nbsIds)((id, _, nbs) => CTRWVertex(id, nbs.getOrElse(Array.empty), Array.empty, initialized = false))
   }
 
-  def createInitMessages(vertex: CTRWVertex, sampleSize: Int) = {
+  def createInitMessages(sampleSize: Int)(vertex: CTRWVertex) = {
     val msg = for (i <- 0 until sampleSize) yield factory.create(vertex)
     CTRWVertex(vertex.id, vertex.neighbours, msg.toArray)
   }

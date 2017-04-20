@@ -15,8 +15,10 @@ class MessageFactory(temp: Double) extends Serializable with Factory[CTRWVertex,
   }
 
   override def correct(vertex: CTRWVertex, message: CTRWMessage): CTRWMessage = {
-    val newTemp = message.temp + (Math.log(Random.nextDouble()) / vertex.degree)
-    val nextVertex = if (newTemp > 0) takeRandomNeighbour(vertex) else None
+    val diff = Math.log(Random.nextDouble()) / vertex.degree
+    val newTemp = message.temp + diff
+    val nextVertex = if (newTemp > 0.01) takeRandomNeighbour(vertex) else None
+    println(s"oldTemp: ${message.temp}, newTemp: $newTemp, diff: $diff")
     CTRWMessage(message.src, newTemp, nextVertex)
   }
 
