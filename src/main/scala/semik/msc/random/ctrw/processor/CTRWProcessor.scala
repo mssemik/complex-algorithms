@@ -52,8 +52,11 @@ class CTRWProcessor[VD, ED](graph: Graph[VD, ED], factory: Factory[CTRWVertex, C
 
   def mergeMessages(msg1: List[CTRWMessage], msg2: List[CTRWMessage]) = msg1 ++ msg2
 
-  def applyMessages(vertexId: VertexId, data: CTRWVertex, messages: List[CTRWMessage]) = {
-    val newMessages = messages map (factory.correct(data, _))
+  def applyMessages(vertexId: VertexId, data: CTRWVertex, messagesOps: Option[List[CTRWMessage]]) = {
+    val newMessages = messagesOps match {
+      case Some(messages) => messages map (factory.correct(data, _))
+      case None => List.empty
+    }
     val keptMessages = data.messages filter (_.nextVertex.isEmpty)
     CTRWVertex(vertexId, data.neighbours, newMessages.toArray ++ keptMessages)
   }

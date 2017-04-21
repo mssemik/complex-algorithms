@@ -12,12 +12,13 @@ object Pregel extends Serializable {
 
   def apply[OVD, VD: ClassTag, ED, MD: ClassTag](graph: Graph[OVD, ED],
                                        initMsg: (OVD) => VD,
-                                       vpred: (VertexId, VD, MD) => VD,
+                                       vpred: (VertexId, VD, Option[MD]) => VD,
                                        send: (EdgeContext[VD, ED, MD]) => Unit,
-                                       merge: (MD, MD) => MD) = {
+                                       merge: (MD, MD) => MD,
+                                       logF: (VertexRDD[MD]) => Unit) = {
 
-    def joinVertices(gr: Graph[VD, ED], msg: VertexRDD[MD], mergeFun: (VertexId, VD, MD) => VD)(numOfIter: Int) = {
-      val resG = gr.ops.joinVertices(msg)(mergeFun)
+    def joinVertices(gr: Graph[VD, ED], msg: VertexRDD[MD], mergeFun: (VertexId, VD, Option[MD]) => VD)(numOfIter: Int) = {
+      val resG = gr.outerJoinVertices(msg)(mergeFun)
       if (numOfIter % 50 == 0) { resG.checkpoint(); resG.vertices.count(); resG.edges.count(); }
       resG
     }
@@ -39,6 +40,8 @@ object Pregel extends Serializable {
       messages = g.aggregateMessages(send, merge).cache
 
       activeMessages = messages.count()
+
+      logF(messages)
 
       oldMessages.unpersist(blocking = false)
       prevG.unpersistVertices(blocking = false)

@@ -22,7 +22,7 @@ class ContinuousTimeRandomWalk[VD, ED](graph: Graph[VD, ED], initTemp: Double) e
       ctrwProcessor.createInitMessages(sampleSize),
       ctrwProcessor.applyMessages,
       ctrwProcessor.sendMessageCtx,
-      ctrwProcessor.mergeMessages)
+      ctrwProcessor.mergeMessages, log)
 
     val vertices = resultGraph.vertices
 
@@ -37,5 +37,6 @@ class ContinuousTimeRandomWalk[VD, ED](graph: Graph[VD, ED], initTemp: Double) e
     VertexRDD(res)
   }
 
+  def log(v: VertexRDD[List[CTRWMessage]]) = println(s"numOfMsg: ${v.aggregate(0)({ case (l, (id, v)) => l + v.size }, _ + _)}")
 }
 
