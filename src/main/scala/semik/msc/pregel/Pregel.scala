@@ -1,7 +1,6 @@
 package semik.msc.pregel
 
-import org.apache.spark.graphx.{EdgeContext, Graph, VertexId, VertexRDD}
-import semik.msc.random.ctrw.struct.{CTRWMessage, CTRWVertex}
+import org.apache.spark.graphx._
 
 import scala.reflect.ClassTag
 
@@ -11,7 +10,7 @@ import scala.reflect.ClassTag
 object Pregel extends Serializable {
 
   def apply[OVD, VD: ClassTag, ED, MD: ClassTag](graph: Graph[OVD, ED],
-                                       initMsg: (OVD) => VD,
+                                       prepareVertices: (OVD) => VD,
                                        vpred: (VertexId, VD, Option[MD]) => VD,
                                        send: (EdgeContext[VD, ED, MD]) => Unit,
                                        merge: (MD, MD) => MD,
@@ -23,7 +22,7 @@ object Pregel extends Serializable {
       resG
     }
 
-    var g = graph.mapVertices((vid, vdata) => initMsg(vdata))
+    var g = graph.mapVertices((vid, vdata) => prepareVertices(vdata))
 
     var messages = g.aggregateMessages(send, merge)
     var activeMessages = messages.count()

@@ -1,7 +1,6 @@
 package semik.msc.path
 
 import org.apache.spark.graphx.{Graph, VertexId}
-import semik.msc.tools.GraphSimplifier
 
 /**
   * Created by mth on 3/8/17.

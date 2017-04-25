@@ -6,7 +6,7 @@ import semik.msc.betweenness.edmonds.processor.EdmondsBCProcessor
 import semik.msc.betweenness.edmonds.struct.EdmondsVertex
 import semik.msc.betweenness.normalizer.BCNormalizer
 import semik.msc.bfs.BFSShortestPath
-import semik.msc.util.GraphSimplifier
+import semik.msc.utils.GraphSimplifier
 
 /**
   * Created by mth on 3/12/17.
@@ -14,7 +14,7 @@ import semik.msc.util.GraphSimplifier
 
 class EdmondsBC[VD, ED](graph: Graph[VD, ED]) extends Serializable {
 
-  lazy val simpleGraph = prepareRawGraph.cache
+  lazy val simpleGraph = prepareRawGraph
 
   val normalizer = new BCNormalizer(graph)
   val bcAggregator = new EdmondsBCAggregator[ED]

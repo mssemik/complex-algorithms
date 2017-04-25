@@ -1,4 +1,4 @@
-package semik.msc.util
+package semik.msc.utils
 
 import org.apache.spark.graphx.Graph
 

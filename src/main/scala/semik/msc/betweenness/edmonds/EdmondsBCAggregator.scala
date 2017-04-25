@@ -44,7 +44,7 @@ class EdmondsBCAggregator[ED] extends Serializable {
       val sender = createAndSendMessage(edgeContext.toEdgeTriplet, depth) _
       sender(edgeContext.srcId, edgeContext.sendToDst)
       sender(edgeContext.dstId, edgeContext.sendToSrc)
-    }, Math.max
+    }, _ + _
   )
 
   private def createAndSendMessage(triplet: EdgeTriplet[EdmondsVertex, ED], depth: Int)(source: VertexId, f: (Double) => Unit) = {

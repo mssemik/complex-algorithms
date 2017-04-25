@@ -3,7 +3,7 @@ package semik.msc.random.ctrw.processor
 import org.apache.spark.graphx._
 import semik.msc.factory.Factory
 import semik.msc.random.ctrw.struct.{CTRWMessage, CTRWVertex}
-import semik.msc.util.GraphSimplifier
+import semik.msc.utils.GraphSimplifier
 
 /**
   * Created by mth on 4/13/17.

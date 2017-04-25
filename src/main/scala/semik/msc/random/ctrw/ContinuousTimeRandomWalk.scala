@@ -11,7 +11,7 @@ import semik.msc.random.ctrw.struct.{CTRWMessage, CTRWVertex}
 /**
   * Created by mth on 3/1/17.
   */
-class ContinuousTimeRandomWalk[VD, ED](graph: Graph[VD, ED], initTemp: Double) extends Serializable {
+class ContinuousTimeRandomWalk[VD, ED](graph: Graph[VD, ED], initTemp: Double = 2.3) extends Serializable {
 
   lazy val ctrwProcessor = new CTRWProcessor[VD, ED](graph, new MessageFactory(initTemp))
 
