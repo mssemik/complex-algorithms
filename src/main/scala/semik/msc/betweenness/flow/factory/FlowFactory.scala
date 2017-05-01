@@ -14,8 +14,8 @@ class FlowFactory extends Factory[CFBCVertex, CFBCFlow] {
 
   override def create(arg: CFBCVertex): CFBCFlow = {
     val dst = arg.availableSamples(Random.nextInt(arg.availableSamples.length))
-    CFBCFlow(arg.id, dst, initPotential)
+    CFBCFlow(arg.id, dst, initPotential / arg.degree)
   }
 
-  override def correct(arg: CFBCVertex, curr: CFBCFlow): CFBCFlow = ???
+  override def correct(arg: CFBCVertex, curr: CFBCFlow): CFBCFlow = curr
 }
