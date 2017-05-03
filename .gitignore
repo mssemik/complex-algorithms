@@ -4,5 +4,6 @@ $git status
 **/target/**
 # Exclude .idea directory related with IDE
 .idea
+# Exclude dir with test graphs
+testGraphs/**
 $git status
-

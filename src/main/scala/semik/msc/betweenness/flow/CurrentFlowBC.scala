@@ -1,6 +1,6 @@
 package semik.msc.betweenness.flow
 
-import org.apache.spark.graphx.Graph
+import org.apache.spark.graphx._
 import semik.msc.betweenness.flow.generator.FlowGenerator
 import semik.msc.betweenness.flow.processor.CFBCProcessor
 import semik.msc.betweenness.flow.struct.{CFBCFlow, CFBCVertex}
@@ -17,13 +17,15 @@ class CurrentFlowBC[VD, ED](graph: Graph[VD, ED], flowGenerator: FlowGenerator[C
     val ctrw = new ContinuousTimeRandomWalk[CFBCVertex, ED](cfbcProcessor.initGraph)
     val randomVertices = ctrw.sampleVertices(Math.ceil(phi * 1.4) toInt)
 
-    val initGraph = cfbcProcessor.initGraph.joinVertices(randomVertices)((id, v, m) => CFBCVertex(id, v.degree, v.bc, m.distinct.toArray))
+    val initGraph = cfbcProcessor.initGraph.ops.joinVertices(randomVertices)((id, v, m) => CFBCVertex(id, v.degree, v.bc, m.distinct.toArray))
 
-    var g1 = cfbcProcessor.createFlow(initGraph).cache
+    var g1 = cfbcProcessor.createFlow(initGraph).mapVertices(cfbcProcessor.applyFlows(epsilon)).cache
 
     var msg = cfbcProcessor.extractFlowMessages(g1).cache
 
     var msgCount = msg.filter({ case (id, m) => m.nonEmpty }).count
+
+    println(s"NumOfVertices: ${getNumberOfFlows(g1)}, NumOfMsg: $msgCount")
 
     while (msgCount > 0) {
       val g2 = cfbcProcessor.preMessageExtraction(epsilon)(g1, msg).cache
@@ -44,9 +46,14 @@ class CurrentFlowBC[VD, ED](graph: Graph[VD, ED], flowGenerator: FlowGenerator[C
       g3.unpersist(false)
       oldMsg.unpersist(false)
 
+      println(s"NumOfVertices: ${getNumberOfFlows(g1)}, NumOfMsg: $msgCount")
     }
 
-    g1
+    initGraph.unpersist(false)
+
+    g1.vertices
   }
+
+  def getNumberOfFlows(g: Graph[CFBCVertex, _]) = g.vertices.map({ case (_, v) => v.vertexFlows.length }).reduce(_ + _)
 
 }

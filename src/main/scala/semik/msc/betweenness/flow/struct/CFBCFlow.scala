@@ -5,11 +5,13 @@ import org.apache.spark.graphx.VertexId
 /**
   * Created by mth on 4/23/17.
   */
-class CFBCFlow(val src: VertexId, val dst: VertexId, val potential: Double, val completed: Boolean) {
+class CFBCFlow(val src: VertexId, val dst: VertexId, val potential: Double, val completed: Boolean) extends Serializable {
   def supplyValue(vertexId: VertexId) =
     if (src == vertexId) 1
     else if (dst == vertexId) -1
     else 0
+
+  val key = (src, dst)
 }
 
 object CFBCFlow extends Serializable {

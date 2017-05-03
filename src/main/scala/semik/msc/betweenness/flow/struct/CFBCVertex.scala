@@ -5,9 +5,9 @@ import org.apache.spark.graphx.VertexId
 /**
   * Created by mth on 4/23/17.
   */
-class CFBCVertex(val id: VertexId, val degree: Int, val bc: Double, val sampleVertices: Array[VertexId], val flows: (Array[CFBCFlow], Array[CFBCFlow]), val processedFlows: Int) extends Serializable {
+class CFBCVertex(val id: VertexId, val degree: Int, val bc: Double, val sampleVertices: Array[VertexId], val flows: (Array[CFBCFlow], Iterable[CFBCNeighbourFlow]), val processedFlows: Int) extends Serializable {
   lazy val relatedFlows = flows._1.filter(f => f.dst == id || f.src == id)
-  lazy val availableSamples = sampleVertices.diff(flows._1.filter(_.src == id).map(_.dst))
+  lazy val availableSamples = sampleVertices.diff(flows._1.filter(_.src == id).map(_.dst) :+ id)
 
   lazy val vertexPhi = flows._1.count(_.src == id)
 
@@ -24,7 +24,7 @@ class CFBCVertex(val id: VertexId, val degree: Int, val bc: Double, val sampleVe
   }
 
   def updateBC(currentFlowing: Seq[Double]) = {
-    val newBC = (processedFlows * bc + currentFlowing.sum) / (processedFlows + currentFlowing.length)
+    val newBC = if (currentFlowing.isEmpty) bc else (processedFlows * bc + currentFlowing.sum) / (processedFlows + currentFlowing.length)
     new CFBCVertex(id, degree, newBC, sampleVertices, flows, processedFlows + currentFlowing.length)
   }
 
@@ -34,10 +34,12 @@ class CFBCVertex(val id: VertexId, val degree: Int, val bc: Double, val sampleVe
   def updateFlows(fls: Array[CFBCFlow]) =
     new CFBCVertex(id, degree, bc, sampleVertices, (fls, flows._2), processedFlows)
 
-  def removeFlows(toRemove: Seq[CFBCFlow]) =
-    new CFBCVertex(id, degree, bc, sampleVertices, (flows._1.diff(toRemove), flows._2), processedFlows)
+  def removeFlows(toRemove: Seq[CFBCFlow]) = {
+    val newFlows = flows._1.diff(toRemove)
+    new CFBCVertex(id, degree, bc, sampleVertices, (newFlows, flows._2), processedFlows)
+  }
 
-  def applyNeighbourFlows(nbhFlows: Array[CFBCFlow]) =
+  def applyNeighbourFlows(nbhFlows: Iterable[CFBCNeighbourFlow]) =
     new CFBCVertex(id, degree, bc, sampleVertices, (flows._1, nbhFlows), processedFlows)
 }
 
@@ -46,6 +48,6 @@ object CFBCVertex extends Serializable {
             degree: Int,
             bc: Double = 0.0,
             sampleVertices: Array[VertexId] = Array.empty,
-            flows: (Array[CFBCFlow], Array[CFBCFlow]) = (Array.empty, Array.empty)
+            flows: (Array[CFBCFlow], Iterable[CFBCNeighbourFlow]) = (Array.empty, Iterable.empty)
            ): CFBCVertex = new CFBCVertex(id, degree, bc, sampleVertices, flows, 0)
 }

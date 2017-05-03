@@ -2,7 +2,7 @@ package semik.msc.betweenness.flow.processor
 
 import org.apache.spark.graphx.{Graph, VertexId, VertexRDD}
 import semik.msc.betweenness.flow.generator.FlowGenerator
-import semik.msc.betweenness.flow.struct.{CFBCFlow, CFBCVertex}
+import semik.msc.betweenness.flow.struct.{CFBCFlow, CFBCNeighbourFlow, CFBCVertex}
 import semik.msc.utils.GraphSimplifier
 
 /**
@@ -48,30 +48,29 @@ class CFBCProcessor[VD, ED](graph: Graph[VD, ED], flowGenerator: FlowGenerator[C
     //    result
   }
 
-  def joinReceivedFlows(vertexId: VertexId, vertex: CFBCVertex, msg: List[CFBCFlow]) =
-    vertex.applyNeighbourFlows(msg.toArray)
+  def joinReceivedFlows(vertexId: VertexId, vertex: CFBCVertex, msg: Array[CFBCFlow]) =
+    vertex.applyNeighbourFlows(msg.groupBy(_.key).map(it => CFBCNeighbourFlow(it._2, vertex)))
 
 
   def applyFlows(epsilon: Double)(id: VertexId, data: CFBCVertex) = {
-    val keyExtF = (f: CFBCFlow) => (f.src, f.dst)
 
-    def updateFlow(contextFlow: CFBCFlow, otherFlows: List[CFBCFlow]) = {
-      val newPotential = (otherFlows.map(_.potential).sum + contextFlow.supplyValue(id)) / data.degree
-      val completed = Math.abs(contextFlow.potential - newPotential) < epsilon
+    def updateFlow(contextFlow: CFBCFlow, nbhFlow: CFBCNeighbourFlow) = {
+      val newPotential = (nbhFlow.sumOfPotential + contextFlow.supplyValue(id)) / data.degree
+      val potentialDiff = Math.abs(contextFlow.potential - newPotential)
+      val completed = potentialDiff < epsilon
       CFBCFlow(contextFlow.src, contextFlow.dst, newPotential, completed)
     }
 
-    val flowsKeys = (data.vertexFlows.map(keyExtF) ++ data.neighboursFlows.map(keyExtF)) distinct
-
-    val msgGroups = data.neighboursFlows.groupBy(keyExtF)
+    val flowsKeys = (data.vertexFlows.map(_.key) ++ data.neighboursFlows.map(_.key)) distinct
 
     val newFlows = for (key <- flowsKeys) yield {
-      val currentFlows = msgGroups.getOrElse(key, Array.empty).toList
-      data.flowsMap.get(key) match {
-        case Some(flow) => /*if (flow.completed) Some(flow) else*/ Some(updateFlow(flow, currentFlows))
-        case None =>
-          val completed = currentFlows.map(_.completed).reduce(_ || _)
-          if (completed) None else Some(updateFlow(CFBCFlow.empty(key._1, key._2), currentFlows))
+      data.neighboursFlows.find(_.key == key) match {
+        case Some(currentFlow) =>
+          data.flowsMap.get(key) match {
+            case Some(flow) => /*if (flow.completed) Some(flow) else*/ Some(updateFlow(flow, currentFlow))
+            case None => if (currentFlow.anyCompleted) None else Some(updateFlow(CFBCFlow.empty(key._1, key._2), currentFlow))
+          }
+        case None => data.flowsMap.get(key)
       }
     }
 
@@ -79,23 +78,18 @@ class CFBCProcessor[VD, ED](graph: Graph[VD, ED], flowGenerator: FlowGenerator[C
   }
 
   def computeBetweenness(vertexId: VertexId, vertex: CFBCVertex) = {
-    val groupedFlows = vertex.neighboursFlows.groupBy(f => (f.src, f.dst))
-    val applicableFlows = groupedFlows.filterKeys({ case (src, dst) => src != vertexId && dst != vertexId })
-    val completedReceivedFlows = applicableFlows.filter({ case ((_, _), f) => f.map(_.completed).reduce(_ && _) })
-    val completedFlows = completedReceivedFlows.filter({ case ((s, d), f) => vertex.getFlow((s, d)).completed })
+    val applicableFlows = vertex.neighboursFlows.filter(nf => nf.src != vertexId && nf.dst != vertexId)
+    val completedReceivedFlows = applicableFlows.filter(_.allCompleted)
+    val completedFlows = completedReceivedFlows.filter(nf => vertex.getFlow(nf.key).completed)
 
-    val currentFlows = completedFlows.map({ case ((s, d), fl) =>
-      val contextFlow = vertex.getFlow((s, d))
-      fl.map(f => Math.abs(f.potential - contextFlow.potential)).sum / 2
-    })
+    val currentFlows = completedFlows.map(_.sumOfDifferences / 2)
 
     vertex.updateBC(currentFlows.toSeq)
   }
 
   def removeCompletedFlows(vertexId: VertexId, vertex: CFBCVertex) = {
-    val groupedFlows = vertex.neighboursFlows.groupBy(f => (f.src, f.dst))
-    val completedReceivedFlows = groupedFlows.filter({ case ((_, _), f) => f.map(_.completed).reduce(_ && _) }).keySet
-    val completedFlows = vertex.vertexFlows.filter(f => f.completed && completedReceivedFlows.contains((f.src, f.dst)))
+    val completedReceivedFlows = vertex.neighboursFlows.filter(_.allCompleted).map(_.key).toSet
+    val completedFlows = vertex.vertexFlows.filter(f => f.completed && completedReceivedFlows.contains(f.key))
 
     vertex.removeFlows(completedFlows)
   }
@@ -107,8 +101,8 @@ class CFBCProcessor[VD, ED](graph: Graph[VD, ED], flowGenerator: FlowGenerator[C
     }, _ ++ _)
 
   def preMessageExtraction(eps: Double)(graph: Graph[CFBCVertex, ED], msg: VertexRDD[Array[CFBCFlow]]) =
-    graph.joinVertices(msg)((vertexId, vertex, vertexMsg) => {
-      val newVert = vertex.applyNeighbourFlows(vertexMsg)
+    graph.ops.joinVertices(msg)((vertexId, vertex, vertexMsg) => {
+      val newVert = joinReceivedFlows(vertexId, vertex, vertexMsg)
       applyFlows(eps)(vertexId, newVert)
     })
 
