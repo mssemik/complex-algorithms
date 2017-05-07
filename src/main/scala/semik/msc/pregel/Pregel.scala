@@ -16,23 +16,20 @@ object Pregel extends Serializable {
                                        merge: (MD, MD) => MD,
                                        logF: (VertexRDD[MD]) => Unit) = {
 
-    def joinVertices(gr: Graph[VD, ED], msg: VertexRDD[MD], mergeFun: (VertexId, VD, Option[MD]) => VD)(numOfIter: Int) = {
-      val resG = gr.outerJoinVertices(msg)(mergeFun)
-      if (numOfIter % 50 == 0) { resG.checkpoint(); resG.vertices.count(); resG.edges.count(); }
-      resG
-    }
 
     var g = graph.mapVertices((vid, vdata) => prepareVertices(vdata))
 
     var messages = g.aggregateMessages(send, merge)
     var activeMessages = messages.count()
+    logF(messages)
 
     var prevG: Graph[VD, ED] = null
-    var i = 1
     while (activeMessages > 0) {
 
       prevG = g
-      g = joinVertices(g, messages, vpred)(i).cache
+      g = g.outerJoinVertices(messages)(vpred).cache
+      g.vertices.localCheckpoint
+      g.edges.localCheckpoint
 
       val oldMessages = messages
 
@@ -45,7 +42,6 @@ object Pregel extends Serializable {
       oldMessages.unpersist(blocking = false)
       prevG.unpersistVertices(blocking = false)
       prevG.edges.unpersist(blocking = false)
-      i = i+1
     }
     messages.unpersist(blocking = false)
     g

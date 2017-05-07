@@ -7,6 +7,7 @@ import semik.msc.betweenness.edmonds.EdmondsBC
 import semik.msc.betweenness.flow.CurrentFlowBC
 import semik.msc.betweenness.flow.factory.FlowFactory
 import semik.msc.betweenness.flow.generator.impl.RandomFlowGenerator
+import semik.msc.betweenness.optimal.NearlyOptimalBC
 import semik.msc.bfs.BFSShortestPath
 import semik.msc.bfs.predicate.BFSVertexPredicate
 import semik.msc.bfs.processor.BFSProcessor
@@ -30,7 +31,8 @@ object StartAlgorithm {
 //    bfs(args(0).toInt, args(1).toInt, 0.8, 0.6)(sc)
 //    bfsFile(args(0))(sc)
 //    ctrw(args(0).toInt, args(1).toInt)(sc)
-    cfbc(args(0).toInt, args(1).toInt, args(2).toDouble, args(3).toInt, args(4).toInt)(sc)
+//    cfbc(args(0).toInt, args(1).toInt, args(2).toDouble, args(3).toInt, args(4).toInt)(sc)
+      no(args(0).toInt, args(1).toInt)(sc)
   }
 
   def bfs(size: Int, part: Int, mu:Double, sigma: Double)(sc: SparkContext) = {
@@ -81,5 +83,13 @@ object StartAlgorithm {
   def star(sc:SparkContext) = {
     val l = sc.parallelize(for (i <- 2 to 10) yield new Edge(1, i, 0))
     Graph.fromEdges(l, 0)
+  }
+
+  def no(size: Int, numOfPartitions: Int)(sc:SparkContext) = {
+    val graph = GraphGenerators.logNormalGraph(sc, size, numOfPartitions)
+
+    val kk = new NearlyOptimalBC[Long, Int](graph)
+
+    kk.computeBC.vertices.count()
   }
 }
