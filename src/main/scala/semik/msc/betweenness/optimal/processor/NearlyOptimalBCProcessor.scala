@@ -1,10 +1,11 @@
 package semik.msc.betweenness.optimal.processor
 
+import com.sun.media.sound.SoftMixingSourceDataLine.NonBlockingFloatInputStream
 import org.apache.spark.graphx._
 import org.apache.spark.storage.StorageLevel
 import semik.msc.betweenness.optimal.predicate.NOInitBFSPredicate
-import semik.msc.betweenness.optimal.struct.NOVertex
-import semik.msc.betweenness.optimal.struct.messages.{DFSPointer, NOMessage}
+import semik.msc.betweenness.optimal.struct.{NOBFSVertex, NOVertex}
+import semik.msc.betweenness.optimal.struct.messages.{BFSBCExtendMessage, DFSPointer, NOMessage}
 import semik.msc.bfs.BFSShortestPath
 import semik.msc.utils.GraphSimplifier
 
@@ -39,19 +40,27 @@ class NearlyOptimalBCProcessor[VD, ED: ClassTag](graph: Graph[VD, ED]) extends S
       val nextVert = vertex.lowestSucc
       val pointer = Some(DFSPointer(startVertex, nextVert, toSent = true))
       val succ = updateSuccSet(vertex, pointer)
-      vertex.update(succ = succ, dfsPointer = pointer)
+      vertex.update(succ = succ, dfsPointer = pointer, bfsMap = Map(startVertex -> NOBFSVertex(-2, .0, 1)))
     case _ => vertex
   }
 
-  def applyMessages(vertexId: VertexId, vertex: NOVertex, messages: Option[List[NOMessage[VertexId]]]) = {
+  def applyMessages(round: Int)(vertexId: VertexId, vertex: NOVertex, messages: Option[List[NOMessage[VertexId]]]) = {
     val msg = messages.getOrElse(List.empty)
     val pointer = msg.filter(_.isDFSPointer).map(_.asInstanceOf[DFSPointer])
-    val bfsMsg = msg.filter(_.isExpand)
+    val bfsMsg = msg.filter(_.isExpand).map(_.asInstanceOf[BFSBCExtendMessage])
 
     val newPointer = updateDFSPointer(vertex, pointer.headOption)
     val newSucc = updateSuccSet(vertex, newPointer)
+    val newBfsMap = updateBfsMap(vertex.bfsMap, bfsMsg)
 
-    vertex.update(succ = newSucc, dfsPointer = newPointer)
+    newPointer match {
+      case Some(ptr) if !ptr.toSent =>
+        val newBfs = (vertexId, NOBFSVertex(round, .0, 1))
+        val bfsMap = newBfsMap + newBfs
+        vertex.update(succ = newSucc, dfsPointer = newPointer, bfsMap = bfsMap)
+      case _ =>
+        vertex.update(succ = newSucc, dfsPointer = newPointer, bfsMap = newBfsMap)
+    }
   }
 
   def updateDFSPointer(vertex: NOVertex, pointerMsg: Option[DFSPointer]): Option[DFSPointer] =
@@ -73,10 +82,15 @@ class NearlyOptimalBCProcessor[VD, ED: ClassTag](graph: Graph[VD, ED]) extends S
     case _ => vertex.succ
   }
 
-  def sendMessages(ctx: EdgeContext[NOVertex, ED, List[NOMessage[VertexId]]]): Unit = {
+  def updateBfsMap(map: Map[VertexId, NOBFSVertex], messages: List[BFSBCExtendMessage]) = {
+    val msgVertex = messages.groupBy(_.source)
+      .map({ case (key, arr) => (key, NOBFSVertex(arr.head.startRound, arr.head.distance, arr.aggregate(0)((acc, m) => acc + m.sigma, _ + _))) })
+    map ++ msgVertex
+  }
+
+  def sendMessages(round: Int)(ctx: EdgeContext[NOVertex, ED, List[NOMessage[VertexId]]]): Unit = {
     def sendPointer(triplet: EdgeTriplet[NOVertex, ED])(dst: VertexId, send: (List[NOMessage[VertexId]]) => Unit) = {
       val srcAttr = triplet.otherVertexAttr(dst)
-      val dstAttr = triplet.vertexAttr(dst)
       srcAttr.dfsPointer match {
         case Some(pointer) if pointer.returning && pointer.toSent && srcAttr.pred.contains(dst) => send(List(pointer))
         case Some(pointer) if pointer.toSent && pointer.next.contains(dst) /*&& !dstAttr.bfsRoot*/ => send(List(pointer))
@@ -84,8 +98,22 @@ class NearlyOptimalBCProcessor[VD, ED: ClassTag](graph: Graph[VD, ED]) extends S
       }
     }
 
-    val pointerSender = sendPointer(ctx.toEdgeTriplet) _
+    def sendBFSExtendMessage(triplet: EdgeTriplet[NOVertex, ED])(dst: VertexId, send: (List[NOMessage[VertexId]]) => Unit) = {
+      val srcAttr = triplet.otherVertexAttr(dst)
+      val dstAttr = triplet.vertexAttr(dst)
+
+      srcAttr.bfsMap.foreach({ case (root, vertex) =>
+        if (!dstAttr.bfsMap.contains(root) && (round - vertex.startRound) > 1) send(List(BFSBCExtendMessage.create(root, vertex)))})
+
+    }
+
+    val triplet = ctx.toEdgeTriplet
+    val pointerSender = sendPointer(triplet) _
     pointerSender(ctx.srcId, ctx.sendToSrc)
     pointerSender(ctx.dstId, ctx.sendToDst)
+
+    val extSender = sendBFSExtendMessage(triplet) _
+    extSender(ctx.srcId, ctx.sendToSrc)
+    extSender(ctx.dstId, ctx.sendToDst)
   }
 }

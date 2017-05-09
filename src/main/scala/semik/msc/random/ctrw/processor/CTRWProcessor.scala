@@ -34,7 +34,7 @@ class CTRWProcessor[VD, ED](graph: Graph[VD, ED], factory: Factory[CTRWVertex, C
     Iterator((triplet.srcId, messagesTo(triplet.srcId))) ++ Iterator((triplet.dstId, messagesTo(triplet.dstId)))
   }
 
-  def sendMessageCtx(edgeContext: EdgeContext[CTRWVertex, _, List[CTRWMessage]]) = {
+  def sendMessageCtx(round: Int)(edgeContext: EdgeContext[CTRWVertex, _, List[CTRWMessage]]) = {
     val triplet = edgeContext.toEdgeTriplet
 
     def messagesTo(dest: VertexId) = {
@@ -52,7 +52,7 @@ class CTRWProcessor[VD, ED](graph: Graph[VD, ED], factory: Factory[CTRWVertex, C
 
   def mergeMessages(msg1: List[CTRWMessage], msg2: List[CTRWMessage]) = msg1 ++ msg2
 
-  def applyMessages(vertexId: VertexId, data: CTRWVertex, messagesOps: Option[List[CTRWMessage]]) = {
+  def applyMessages(round: Int)(vertexId: VertexId, data: CTRWVertex, messagesOps: Option[List[CTRWMessage]]) = {
     val newMessages = messagesOps match {
       case Some(messages) => messages map (factory.correct(data, _))
       case None => List.empty

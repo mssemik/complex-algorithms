@@ -18,16 +18,21 @@ class NearlyOptimalBC[VD, ED: ClassTag](graph: Graph[VD, ED]) extends Serializab
   def computeBC = {
     val initBFSGraph = nOBCProcessor.initGraph
 
-    Pregel[NOVertex, NOVertex, ED, List[NOMessage[VertexId]]](initBFSGraph,
+    val sigmaGraph = Pregel[NOVertex, NOVertex, ED, List[NOMessage[VertexId]]](initBFSGraph,
       nOBCProcessor.prepareVertices(nOBCProcessor.initVertexId),
       nOBCProcessor.applyMessages,
       nOBCProcessor.sendMessages,
-      _ ++ _, v => {
-        val k = v.flatMap({ case (id, vv) => vv.map(j => (id, j)) }).filter(_._2.isDFSPointer).collect().map(j => (j._1, j._2.asInstanceOf[DFSPointer]))
-        k.foreach(j => println(s"${j._1} -> ${j._2.next.getOrElse(-1)}, toSend: ${j._2.toSent}"))
-        println("###############")
-      }
-    )
+      _ ++ _, v => None
+    ).cache
+
+    sigmaGraph.vertices.count()
+    sigmaGraph.edges.count()
+
+    sigmaGraph.vertices.foreach({ case (id, v) => v.bfsMap.foreach({ case (src, b) => println(s"$id -> $src = ${b.startRound}")})})
+
+    val bcAggregator = new NearlyOptimalBCAggregator[ED](sigmaGraph)
+
+    bcAggregator.aggragateBC
   }
 
 

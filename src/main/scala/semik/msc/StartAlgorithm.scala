@@ -90,6 +90,8 @@ object StartAlgorithm {
 
     val kk = new NearlyOptimalBC[Long, Int](graph)
 
-    kk.computeBC.vertices.count()
+    val bcVector = kk.computeBC
+
+    bcVector.collect().foreach({ case (id, bc) => println("id: " + id + " => " + bc)})
   }
 }
