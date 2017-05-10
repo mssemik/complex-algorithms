@@ -31,18 +31,4 @@ class BFSShortestPath[VD: ClassTag, ED, MD: ClassTag](vPredicate: VertexPredicat
     initGraph.unpersist(false)
     result
   }
-
-  /**
-    * Solution based on the article:
-    * Holzer, Stephan, and Roger Wattenhofer.
-    * "Optimal distributed all pairs shortest paths and applications."
-    * Proceedings of the 2012 ACM symposium on Principles of distributed computing.
-    * ACM, 2012.
-    *
-    * @param graph
-    */
-  def computeAllPairsShortestPaths(graph: Graph[VD, ED], startVertex: VertexId, undirected: Boolean = true) = {
-
-  }
-
 }

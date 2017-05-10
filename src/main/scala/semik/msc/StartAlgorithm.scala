@@ -32,7 +32,7 @@ object StartAlgorithm {
 //    bfsFile(args(0))(sc)
 //    ctrw(args(0).toInt, args(1).toInt)(sc)
 //    cfbc(args(0).toInt, args(1).toInt, args(2).toDouble, args(3).toInt, args(4).toInt)(sc)
-      no(args(0).toInt, args(1).toInt)(sc)
+    compare(args(0).toInt, args(1).toInt)(sc)
   }
 
   def bfs(size: Int, part: Int, mu:Double, sigma: Double)(sc: SparkContext) = {
@@ -93,5 +93,23 @@ object StartAlgorithm {
     val bcVector = kk.computeBC
 
     bcVector.collect().foreach({ case (id, bc) => println("id: " + id + " => " + bc)})
+  }
+
+  def compare(size: Int, numOfPartitions: Int)(sc:SparkContext) = {
+    val graph = GraphGenerators.logNormalGraph(sc, size, numOfPartitions, .8, .6)
+
+    val tt = new EdmondsBC[Long, Int](graph)
+
+    val edmondsBC = tt.computeBC.cache
+    edmondsBC.count
+
+    val kk = new NearlyOptimalBC[Long, Int](graph)
+
+    val NerlyOptimalBC = kk.computeBC.cache
+    NerlyOptimalBC.count
+
+    val comp = edmondsBC.join(NerlyOptimalBC).collect()
+
+    comp.foreach({ case (id, (ed, no)) => println(s"$id => ed: $ed, no: $no")})
   }
 }

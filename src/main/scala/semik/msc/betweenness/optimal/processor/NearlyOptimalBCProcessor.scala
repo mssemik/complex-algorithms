@@ -1,6 +1,5 @@
 package semik.msc.betweenness.optimal.processor
 
-import com.sun.media.sound.SoftMixingSourceDataLine.NonBlockingFloatInputStream
 import org.apache.spark.graphx._
 import org.apache.spark.storage.StorageLevel
 import semik.msc.betweenness.optimal.predicate.NOInitBFSPredicate
@@ -9,6 +8,7 @@ import semik.msc.betweenness.optimal.struct.messages.{BFSBCExtendMessage, DFSPoi
 import semik.msc.bfs.BFSShortestPath
 import semik.msc.utils.GraphSimplifier
 
+import scala.Array._
 import scala.reflect.ClassTag
 
 /**
@@ -31,7 +31,7 @@ class NearlyOptimalBCProcessor[VD, ED: ClassTag](graph: Graph[VD, ED]) extends S
     val initBFSProcessor = new BFSShortestPath[NOVertex, ED, List[NOMessage[VertexId]]](new NOInitBFSPredicate, new NOInitBFSProcessor[ED]())
     val kk = initBFSProcessor.computeSingleSelectedSourceBFS(preparedGraph, initVertexId)
 
-    kk.vertices.foreach({ case (id, v) => println(s"For vertex $id -> pred: ${v.pred.get}, #succ: ${v.succ.getOrElse(Array.empty).length}" ) })
+//    kk.vertices.foreach({ case (id, v) => println(s"For vertex $id -> pred: ${v.pred.get}, #succ: ${v.succ.getOrElse(empty).length}" ) })
     kk
   }
 
@@ -40,7 +40,7 @@ class NearlyOptimalBCProcessor[VD, ED: ClassTag](graph: Graph[VD, ED]) extends S
       val nextVert = vertex.lowestSucc
       val pointer = Some(DFSPointer(startVertex, nextVert, toSent = true))
       val succ = updateSuccSet(vertex, pointer)
-      vertex.update(succ = succ, dfsPointer = pointer, bfsMap = Map(startVertex -> NOBFSVertex(-2, .0, 1)))
+      vertex.update(succ = succ, dfsPointer = pointer, bfsMap = Map(startVertex -> NOBFSVertex(0, .0, 1)))
     case _ => vertex
   }
 
@@ -55,7 +55,7 @@ class NearlyOptimalBCProcessor[VD, ED: ClassTag](graph: Graph[VD, ED]) extends S
 
     newPointer match {
       case Some(ptr) if !ptr.toSent =>
-        val newBfs = (vertexId, NOBFSVertex(round, .0, 1))
+        val newBfs = (vertexId, NOBFSVertex(round + 1, .0, 1))
         val bfsMap = newBfsMap + newBfs
         vertex.update(succ = newSucc, dfsPointer = newPointer, bfsMap = bfsMap)
       case _ =>
@@ -78,7 +78,7 @@ class NearlyOptimalBCProcessor[VD, ED: ClassTag](graph: Graph[VD, ED]) extends S
 
   def updateSuccSet(vertex: NOVertex, pointer: Option[DFSPointer]): Option[Array[VertexId]] = pointer match {
     case Some(p) if p.next.nonEmpty && vertex.succ.nonEmpty =>
-      Some(vertex.succ.getOrElse(Array.empty[VertexId]).filterNot(id => p.next.contains(id)))
+      Some(vertex.succ.getOrElse(empty[VertexId]).filterNot(p.next.contains(_)))
     case _ => vertex.succ
   }
 
@@ -103,7 +103,7 @@ class NearlyOptimalBCProcessor[VD, ED: ClassTag](graph: Graph[VD, ED]) extends S
       val dstAttr = triplet.vertexAttr(dst)
 
       srcAttr.bfsMap.foreach({ case (root, vertex) =>
-        if (!dstAttr.bfsMap.contains(root) && (round - vertex.startRound) > 1) send(List(BFSBCExtendMessage.create(root, vertex)))})
+        if (!dstAttr.bfsMap.contains(root) && round >= vertex.startRound) send(List(BFSBCExtendMessage.create(root, vertex)))})
 
     }
 

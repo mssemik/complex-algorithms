@@ -14,9 +14,9 @@ class DFSPointer(val source: VertexId, val next: Option[VertexId], val toSent: B
 
   val returning = next.isEmpty
 
-  def asToSent(next: Option[VertexId] = next) = DFSPointer(source, next, toSent = true)
+  def asToSent(n: Option[VertexId] = next) = DFSPointer(source, n, toSent = true)
 
-  def asWaiting(next: Option[VertexId]) = DFSPointer(source, next, toSent = false)
+  def asWaiting(n: Option[VertexId]) = DFSPointer(source, n, toSent = false)
 
   def asReturning = DFSPointer(source, None, toSent = true)
 }

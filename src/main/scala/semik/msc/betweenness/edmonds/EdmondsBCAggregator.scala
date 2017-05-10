@@ -9,7 +9,7 @@ import semik.msc.betweenness.edmonds.struct.EdmondsVertex
 class EdmondsBCAggregator[ED] extends Serializable {
 
   def aggregate(graph: Graph[EdmondsVertex, ED], source: VertexId) = {
-    val startTime = System.nanoTime()
+//    val startTime = System.nanoTime()
 
     val maxDepth = graph.vertices.aggregate(0)((depth, v) => Math.max(v._2.depth, depth), Math.max)
 
@@ -34,8 +34,8 @@ class EdmondsBCAggregator[ED] extends Serializable {
 
     messages.unpersist(false)
 
-    val finishTime = System.nanoTime()
-    println("Time of execution updateCentrality:" + ((finishTime - startTime) / 1000000) + " ms")
+//    println("Time of execution updateCentrality:" + ((finishTime - startTime) / 1000000) + " ms")
+    //    val finishTime = System.nanoTime()
     g
   }
 
