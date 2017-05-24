@@ -7,7 +7,7 @@ import semik.msc.bfs.predicate.BFSVertexPredicate
 /**
   * Created by mth on 5/9/17.
   */
-class BFSBCExtendMessage(val source: VertexId, val distance: Double, val sigma: Int, val startRound: Int) extends NOMessage[VertexId] {
+class BFSBCExtendMessage(val source: VertexId, val distance: Double, val sigma: Int, val startRound: Long) extends NOMessage[VertexId] {
   override def content: VertexId = source
 
   override val isExpand: Boolean = true

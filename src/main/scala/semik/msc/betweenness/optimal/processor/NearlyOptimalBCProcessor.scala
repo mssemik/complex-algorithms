@@ -55,7 +55,7 @@ class NearlyOptimalBCProcessor[VD, ED: ClassTag](graph: Graph[VD, ED]) extends S
 
     newPointer match {
       case Some(ptr) if !ptr.toSent =>
-        val newBfs = (vertexId, NOBFSVertex(round + 1, .0, 1))
+        val newBfs = (vertexId, NOBFSVertex(ptr.round + 1, .0, 1))
         val bfsMap = newBfsMap + newBfs
         vertex.update(succ = newSucc, dfsPointer = newPointer, bfsMap = bfsMap)
       case _ =>
@@ -101,9 +101,10 @@ class NearlyOptimalBCProcessor[VD, ED: ClassTag](graph: Graph[VD, ED]) extends S
     def sendBFSExtendMessage(triplet: EdgeTriplet[NOVertex, ED])(dst: VertexId, send: (List[NOMessage[VertexId]]) => Unit) = {
       val srcAttr = triplet.otherVertexAttr(dst)
       val dstAttr = triplet.vertexAttr(dst)
+      val srcPtrRound = srcAttr.dfsPointer.map(_.round).getOrElse(Long.MaxValue)
 
       srcAttr.bfsMap.foreach({ case (root, vertex) =>
-        if (!dstAttr.bfsMap.contains(root) && round >= vertex.startRound) send(List(BFSBCExtendMessage.create(root, vertex)))})
+        if (!dstAttr.bfsMap.contains(root) && srcPtrRound >= vertex.startRound) send(List(BFSBCExtendMessage.create(root, vertex)))})
 
     }
 

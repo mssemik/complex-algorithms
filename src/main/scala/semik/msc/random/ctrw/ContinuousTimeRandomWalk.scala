@@ -37,6 +37,6 @@ class ContinuousTimeRandomWalk[VD, ED](graph: Graph[VD, ED], initTemp: Double = 
     VertexRDD(res)
   }
 
-  def log(v: VertexRDD[List[CTRWMessage]]) = println(s"numOfMsg: ${v.aggregate(0)({ case (l, (id, v)) => l + v.size }, _ + _)}")
+  def log(v: VertexRDD[List[CTRWMessage]]) = {} //println(s"numOfMsg: ${v.aggregate(0)({ case (l, (id, v)) => l + v.size }, _ + _)}")
 }
 

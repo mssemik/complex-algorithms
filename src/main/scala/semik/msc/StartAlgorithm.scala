@@ -98,18 +98,24 @@ object StartAlgorithm {
   def compare(size: Int, numOfPartitions: Int)(sc:SparkContext) = {
     val graph = GraphGenerators.logNormalGraph(sc, size, numOfPartitions, .8, .6)
 
-    val tt = new EdmondsBC[Long, Int](graph)
+    val flowGenerator = new RandomFlowGenerator(6, size, 6, new FlowFactory)
+    val tt = new CurrentFlowBC[Long, Int](graph, flowGenerator)
 
-    val edmondsBC = tt.computeBC.cache
-    edmondsBC.count
+    val cfbc = tt.computeBC(6, .001)
+    cfbc.count
 
     val kk = new NearlyOptimalBC[Long, Int](graph)
 
     val NerlyOptimalBC = kk.computeBC.cache
     NerlyOptimalBC.count
 
-    val comp = edmondsBC.join(NerlyOptimalBC).collect()
+    val comp1 = cfbc.sortBy(_._2.bc, false).take(10).map({ case (id, v) => (id, v.bc)})
+    val comp2 = NerlyOptimalBC.sortBy(_._2, false).take(10)
 
-    comp.foreach({ case (id, (ed, no)) => println(s"$id => ed: $ed, no: $no")})
+    println("CFBC:")
+    comp1.foreach({ case (id, bc) => println(s"id: $id => bc: $bc") })
+
+    println("NEBC:")
+    comp2.foreach({ case (id, bc) => println(s"id: $id => bc: $bc") })
   }
 }

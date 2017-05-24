@@ -7,7 +7,7 @@ import org.apache.spark.graphx.VertexId
   */
 class CFBCVertex(val id: VertexId, val degree: Int, val bc: Double, val sampleVertices: Array[VertexId], val flows: (Array[CFBCFlow], Iterable[CFBCNeighbourFlow]), val processedFlows: Int) extends Serializable {
   lazy val relatedFlows = flows._1.filter(f => f.dst == id || f.src == id)
-  lazy val availableSamples = sampleVertices.diff(flows._1.filter(_.src == id).map(_.dst) :+ id)
+  lazy val availableSamples = sampleVertices/*.diff(flows._1.filter(_.src == id).map(_.dst) :+ id)*/
 
   lazy val vertexPhi = flows._1.count(_.src == id)
 
@@ -29,7 +29,7 @@ class CFBCVertex(val id: VertexId, val degree: Int, val bc: Double, val sampleVe
   }
 
   def addNewFlow(flow: CFBCFlow) =
-    new CFBCVertex(id, degree, bc, sampleVertices, (flows._1 :+ flow, flows._2), processedFlows)
+    new CFBCVertex(id, degree, bc, sampleVertices.filterNot(_ == flow.dst), (flows._1 :+ flow, flows._2), processedFlows)
 
   def updateFlows(fls: Array[CFBCFlow]) =
     new CFBCVertex(id, degree, bc, sampleVertices, (fls, flows._2), processedFlows)

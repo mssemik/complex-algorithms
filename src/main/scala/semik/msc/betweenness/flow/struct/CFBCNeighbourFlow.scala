@@ -18,6 +18,15 @@ class CFBCNeighbourFlow(
 }
 
 object CFBCNeighbourFlow extends Serializable {
+  def apply(src: VertexId,
+            dst: VertexId,
+            sumOfPotential: Double = .0,
+            sumOfDifferences: Double = .0,
+            numberOfFlows: Int = 0,
+            allCompleted: Boolean = false,
+            anyCompleted: Boolean = false
+           ): CFBCNeighbourFlow = new CFBCNeighbourFlow(src, dst, sumOfPotential, sumOfDifferences, numberOfFlows, allCompleted, anyCompleted)
+
   def apply(flows: Iterable[CFBCFlow], vertex: CFBCVertex): CFBCNeighbourFlow = {
 
     def aggregatePotential(vertexFlow: CFBCFlow)(acc: (Double, Double, Boolean, Boolean), flow: CFBCFlow) =
@@ -33,6 +42,6 @@ object CFBCNeighbourFlow extends Serializable {
     val (src, dst) = group.keySet.head
     val aggregaeFunc = aggregatePotential(vertex.getFlow((src, dst))) _
     val (sum, diff, allComp, anyComp) = flows.aggregate((0.0, 0.0, true, false))(aggregaeFunc, mergePotential)
-    new CFBCNeighbourFlow(src, dst, sum, diff, flows.size, allComp, anyComp)
+    CFBCNeighbourFlow(src, dst, sum, diff, flows.size, allComp, anyComp)
   }
 }

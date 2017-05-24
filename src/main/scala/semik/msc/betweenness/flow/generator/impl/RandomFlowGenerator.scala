@@ -17,6 +17,6 @@ class RandomFlowGenerator(phi: Int, n: Int, k: Int, factory: Factory[CFBCVertex,
   def shouldGenerateFlow(vertex: CFBCVertex) = {
     val p = Math.max(0.0, (phi - vertex.vertexPhi) / n)
     val r = Random.nextDouble()
-    vertex.processedFlows < k && r > p && vertex.availableSamples.nonEmpty
+    r > p && vertex.availableSamples.nonEmpty
   }
 }

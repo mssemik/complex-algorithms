@@ -18,7 +18,7 @@ class NearlyOptimalBCAggregator[ED](graph: Graph[NOVertex, ED]) extends Serializ
       prepareVertices,
       applyMessages,
       sendMessages(diameter.toInt),
-      _ ++ _, m => m.foreach({ case (_, k) => k.foreach(j => println(j.psi))}), 4
+      _ ++ _, m => {}, 2
     )
 
     result.mapVertices((id, v) => v.bfsMap.map({ case (src, vbc) => if (src == id) 0 else vbc.psi * vbc.sigma.toDouble}).sum / 2).vertices

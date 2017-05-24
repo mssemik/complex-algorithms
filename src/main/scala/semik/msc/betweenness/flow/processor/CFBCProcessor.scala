@@ -1,6 +1,6 @@
 package semik.msc.betweenness.flow.processor
 
-import org.apache.spark.graphx.{Graph, VertexId, VertexRDD}
+import org.apache.spark.graphx.{EdgeTriplet, Graph, VertexId, VertexRDD}
 import semik.msc.betweenness.flow.generator.FlowGenerator
 import semik.msc.betweenness.flow.struct.{CFBCFlow, CFBCNeighbourFlow, CFBCVertex}
 import semik.msc.utils.GraphSimplifier
@@ -49,7 +49,7 @@ class CFBCProcessor[VD, ED](graph: Graph[VD, ED], flowGenerator: FlowGenerator[C
   }
 
   def joinReceivedFlows(vertexId: VertexId, vertex: CFBCVertex, msg: Array[CFBCFlow]) =
-    vertex.applyNeighbourFlows(msg.groupBy(_.key).map(it => CFBCNeighbourFlow(it._2, vertex)))
+    vertex.applyNeighbourFlows(msg.groupBy(_.key).map(it => if (it._2.nonEmpty) CFBCNeighbourFlow(it._2, vertex) else CFBCNeighbourFlow(it._1._1, it._1._2)))
 
 
   def applyFlows(epsilon: Double)(id: VertexId, data: CFBCVertex) = {
@@ -57,7 +57,7 @@ class CFBCProcessor[VD, ED](graph: Graph[VD, ED], flowGenerator: FlowGenerator[C
     def updateFlow(contextFlow: CFBCFlow, nbhFlow: CFBCNeighbourFlow) = {
       val newPotential = (nbhFlow.sumOfPotential + contextFlow.supplyValue(id)) / data.degree
       val potentialDiff = Math.abs(contextFlow.potential - newPotential)
-      val completed = potentialDiff < epsilon
+      val completed = contextFlow.completed || potentialDiff < epsilon
       CFBCFlow(contextFlow.src, contextFlow.dst, newPotential, completed)
     }
 
@@ -67,8 +67,9 @@ class CFBCProcessor[VD, ED](graph: Graph[VD, ED], flowGenerator: FlowGenerator[C
       data.neighboursFlows.find(_.key == key) match {
         case Some(currentFlow) =>
           data.flowsMap.get(key) match {
-            case Some(flow) => /*if (flow.completed) Some(flow) else*/ Some(updateFlow(flow, currentFlow))
-            case None => if (currentFlow.anyCompleted) None else Some(updateFlow(CFBCFlow.empty(key._1, key._2), currentFlow))
+            case Some(flow) => if (flow.completed) Some(flow) else Some(updateFlow(flow, currentFlow))
+            case None if !currentFlow.anyCompleted => Some(updateFlow(CFBCFlow.empty(key._1, key._2), currentFlow))
+            case _ => None
           }
         case None => data.flowsMap.get(key)
       }
@@ -96,8 +97,18 @@ class CFBCProcessor[VD, ED](graph: Graph[VD, ED], flowGenerator: FlowGenerator[C
 
   def extractFlowMessages(graph: Graph[CFBCVertex, ED]) =
     graph.aggregateMessages[Array[CFBCFlow]](ctx => {
-      ctx.sendToDst(ctx.srcAttr.vertexFlows)
-      ctx.sendToSrc(ctx.dstAttr.vertexFlows)
+
+      def send(triplet: EdgeTriplet[CFBCVertex, ED])(dst: VertexId, sendF: (Array[CFBCFlow]) => Unit): Unit = {
+        val srcFlows = triplet.otherVertexAttr(dst).vertexFlows
+        val dstFlowsKeys = triplet.vertexAttr(dst).vertexFlows.map(f => (f.key, f.completed)).toMap
+        val activeFlows = srcFlows.filterNot(_.completed)
+        val completedFlows = srcFlows.filter(f => f.completed && dstFlowsKeys.contains(f.key))
+        sendF(activeFlows ++ completedFlows)
+      }
+
+      val sendDataTo = send(ctx.toEdgeTriplet) _
+      sendDataTo(ctx.srcId, ctx.sendToSrc)
+      sendDataTo(ctx.dstId, ctx.sendToDst)
     }, _ ++ _)
 
   def preMessageExtraction(eps: Double)(graph: Graph[CFBCVertex, ED], msg: VertexRDD[Array[CFBCFlow]]) =

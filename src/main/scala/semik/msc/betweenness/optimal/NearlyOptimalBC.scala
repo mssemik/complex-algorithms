@@ -27,7 +27,7 @@ class NearlyOptimalBC[VD, ED: ClassTag](graph: Graph[VD, ED]) extends Serializab
       _ ++ _, logMessages(_), 2
     )
 
-    sigmaGraph.vertices.foreach({ case (id, v) => v.bfsMap.foreach({ case (src, b) => println(s"$id -> $src = ${b.startRound}")})})
+//    sigmaGraph.vertices.foreach({ case (id, v) => v.bfsMap.foreach({ case (src, b) => println(s"$id -> $src = ${b.startRound}")})})
 
     val bcAggregator = new NearlyOptimalBCAggregator[ED](sigmaGraph)
 

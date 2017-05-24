@@ -15,7 +15,7 @@ import scala.reflect.ClassTag
 class BFSShortestPath[VD: ClassTag, ED, MD: ClassTag](vPredicate: VertexPredicate[VD, MD], processor: PregelProcessor[VD, ED, MD]) extends Serializable {
 
   def computeSingleSelectedSourceBFS(graph: Graph[VD, ED], source: VertexId, undirected: Boolean = true): Graph[VD, ED] = {
-    val startTime = System.nanoTime()
+//    val startTime = System.nanoTime()
 
     val initGraph = graph.mapVertices((vId, attr) => vPredicate.getInitialData(vId, attr)(source)).cache
 
@@ -25,8 +25,8 @@ class BFSShortestPath[VD: ClassTag, ED, MD: ClassTag](vPredicate: VertexPredicat
       processor.mergeMessages
     )
 
-    val finishTime = System.nanoTime()
-    println("Time of execution computeSingleSelectedSourceBFS:" + ((finishTime - startTime)/1000000) + " ms")
+//    val finishTime = System.nanoTime()
+//    println("Time of execution computeSingleSelectedSourceBFS:" + ((finishTime - startTime)/1000000) + " ms")
 
     initGraph.unpersist(false)
     result
