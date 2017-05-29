@@ -1,14 +1,17 @@
 package semik.msc.betweenness.flow.processor
 
 import org.apache.spark.graphx.{EdgeTriplet, Graph, VertexId, VertexRDD}
+import org.apache.spark.storage.StorageLevel
 import semik.msc.betweenness.flow.generator.FlowGenerator
 import semik.msc.betweenness.flow.struct.{CFBCFlow, CFBCNeighbourFlow, CFBCVertex}
 import semik.msc.utils.GraphSimplifier
 
+import scala.reflect.ClassTag
+
 /**
   * Created by mth on 4/23/17.
   */
-class CFBCProcessor[VD, ED](graph: Graph[VD, ED], flowGenerator: FlowGenerator[CFBCVertex, Option[CFBCFlow]]) extends Serializable {
+class CFBCProcessor[VD, ED: ClassTag](graph: Graph[VD, ED], flowGenerator: FlowGenerator[CFBCVertex, Option[CFBCFlow]]) extends Serializable {
 
   lazy val initGraph = prepareRawGraph
 
@@ -17,7 +20,13 @@ class CFBCProcessor[VD, ED](graph: Graph[VD, ED], flowGenerator: FlowGenerator[C
   private def prepareRawGraph = {
     val simpleGraph = GraphSimplifier.simplifyGraph(graph)((m, _) => m)
     val degrees = simpleGraph.ops.degrees
-    simpleGraph.outerJoinVertices(degrees)((id, _, deg) => CFBCVertex(id, deg.getOrElse(0)))
+    val temp = simpleGraph.outerJoinVertices(degrees)((id, _, deg) => CFBCVertex(id, deg.getOrElse(0)))
+    Graph[CFBCVertex, ED](
+      vertices = temp.vertices,
+      edges = temp.edges,
+      vertexStorageLevel = StorageLevel.MEMORY_AND_DISK,
+      edgeStorageLevel = StorageLevel.MEMORY_AND_DISK
+    )
   }
 
   def createFlow(graph: Graph[CFBCVertex, ED]) = {
@@ -61,21 +70,23 @@ class CFBCProcessor[VD, ED](graph: Graph[VD, ED], flowGenerator: FlowGenerator[C
       CFBCFlow(contextFlow.src, contextFlow.dst, newPotential, completed)
     }
 
-    val flowsKeys = (data.vertexFlows.map(_.key) ++ data.neighboursFlows.map(_.key)) distinct
-
-    val newFlows = for (key <- flowsKeys) yield {
-      data.neighboursFlows.find(_.key == key) match {
-        case Some(currentFlow) =>
-          data.flowsMap.get(key) match {
-            case Some(flow) => if (flow.completed) Some(flow) else Some(updateFlow(flow, currentFlow))
-            case None if !currentFlow.anyCompleted => Some(updateFlow(CFBCFlow.empty(key._1, key._2), currentFlow))
-            case _ => None
-          }
-        case None => data.flowsMap.get(key)
+    val newFlows = for (nb <- data.neighboursFlows) yield {
+      val flowOpt = data.flowsMap.get(nb.key)
+      flowOpt match {
+        case Some(flow) if flow.completed && nb.allCompleted => Some(flow)
+        case Some(flow) => Some(updateFlow(flow, nb))
+        case None if !nb.anyCompleted => Some(updateFlow(CFBCFlow.empty(nb.key._1, nb.key._2), nb))
+        case _ => None
       }
     }
 
-    data.updateFlows(newFlows.filter(_.nonEmpty).map(_.get))
+    val k1 = data.vertexFlows.map(f => (f.key, f)).toMap
+    val k2 = newFlows.filter(_.nonEmpty).map(f => (f.get.key, f.get)).toMap
+
+    val k3 = k1.filterKeys(k => !k2.contains(k))
+    val kk = k3 ++ k2
+
+    data.updateFlows(kk.values.toArray)
   }
 
   def computeBetweenness(vertexId: VertexId, vertex: CFBCVertex) = {
@@ -89,8 +100,8 @@ class CFBCProcessor[VD, ED](graph: Graph[VD, ED], flowGenerator: FlowGenerator[C
   }
 
   def removeCompletedFlows(vertexId: VertexId, vertex: CFBCVertex) = {
-    val completedReceivedFlows = vertex.neighboursFlows.filter(_.allCompleted).map(_.key).toSet
-    val completedFlows = vertex.vertexFlows.filter(f => f.completed && completedReceivedFlows.contains(f.key))
+    val completedReceivedFlows = vertex.neighboursFlows.map(nf => (nf.key, nf.allCompleted)).toMap
+    val completedFlows = vertex.vertexFlows.filter(f => f.removable && completedReceivedFlows.getOrElse(f.key, true))
 
     vertex.removeFlows(completedFlows)
   }
@@ -100,7 +111,7 @@ class CFBCProcessor[VD, ED](graph: Graph[VD, ED], flowGenerator: FlowGenerator[C
 
       def send(triplet: EdgeTriplet[CFBCVertex, ED])(dst: VertexId, sendF: (Array[CFBCFlow]) => Unit): Unit = {
         val srcFlows = triplet.otherVertexAttr(dst).vertexFlows
-        val dstFlowsKeys = triplet.vertexAttr(dst).vertexFlows.map(f => (f.key, f.completed)).toMap
+        val dstFlowsKeys = triplet.vertexAttr(dst).vertexFlows.map(_.key).toSet
         val activeFlows = srcFlows.filterNot(_.completed)
         val completedFlows = srcFlows.filter(f => f.completed && dstFlowsKeys.contains(f.key))
         sendF(activeFlows ++ completedFlows)
@@ -112,8 +123,8 @@ class CFBCProcessor[VD, ED](graph: Graph[VD, ED], flowGenerator: FlowGenerator[C
     }, _ ++ _)
 
   def preMessageExtraction(eps: Double)(graph: Graph[CFBCVertex, ED], msg: VertexRDD[Array[CFBCFlow]]) =
-    graph.ops.joinVertices(msg)((vertexId, vertex, vertexMsg) => {
-      val newVert = joinReceivedFlows(vertexId, vertex, vertexMsg)
+    graph.outerJoinVertices(msg)((vertexId, vertex, vertexMsg) => {
+      val newVert = joinReceivedFlows(vertexId, vertex, vertexMsg.getOrElse(Array.empty))
       applyFlows(eps)(vertexId, newVert)
     })
 

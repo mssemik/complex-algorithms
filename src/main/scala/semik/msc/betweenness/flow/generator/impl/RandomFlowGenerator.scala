@@ -19,4 +19,6 @@ class RandomFlowGenerator(phi: Int, n: Int, k: Int, factory: Factory[CFBCVertex,
     val r = Random.nextDouble()
     r > p && vertex.availableSamples.nonEmpty
   }
+
+  override def flowsPerVertex = k
 }

@@ -11,7 +11,7 @@ import semik.msc.pregel.Pregel
 class NearlyOptimalBCAggregator[ED](graph: Graph[NOVertex, ED]) extends Serializable {
 
   def aggragateBC = {
-    val diameter = graph.mapVertices((id, v) => v.bfsMap.map(_._2.distance).max).vertices.max()._2
+    val diameter = graph.mapVertices((id, v) => v.eccentricity).vertices.max()._2
 
     val result = Pregel[NOVertex, NOVertex, ED, List[BCAggregationMessage]](
       graph,

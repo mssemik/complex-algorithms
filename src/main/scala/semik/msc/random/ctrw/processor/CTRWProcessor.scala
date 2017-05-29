@@ -1,21 +1,29 @@
 package semik.msc.random.ctrw.processor
 
 import org.apache.spark.graphx._
+import org.apache.spark.storage.StorageLevel
 import semik.msc.factory.Factory
 import semik.msc.random.ctrw.struct.{CTRWMessage, CTRWVertex}
 import semik.msc.utils.GraphSimplifier
 
+import scala.reflect.ClassTag
+
 /**
   * Created by mth on 4/13/17.
   */
-class CTRWProcessor[VD, ED](graph: Graph[VD, ED], factory: Factory[CTRWVertex, CTRWMessage]) extends Serializable {
+class CTRWProcessor[VD, ED: ClassTag](graph: Graph[VD, ED], factory: Factory[CTRWVertex, CTRWMessage]) extends Serializable {
 
   lazy val initGraph = prepareRawGraph
 
   private def prepareRawGraph = {
     val simpleGraph = GraphSimplifier.simplifyGraph(graph)((m, _) => m)
     val nbsIds = simpleGraph.ops.collectNeighborIds(EdgeDirection.Either)
-    simpleGraph.outerJoinVertices(nbsIds)((id, _, nbs) => CTRWVertex(id, nbs.getOrElse(Array.empty), Array.empty, initialized = false))
+    val temp = simpleGraph.outerJoinVertices(nbsIds)((id, _, nbs) => CTRWVertex(id, nbs.getOrElse(Array.empty), Array.empty, initialized = false))
+    Graph[CTRWVertex, ED](
+      temp.vertices, temp.edges,
+      vertexStorageLevel = StorageLevel.MEMORY_AND_DISK,
+      edgeStorageLevel = StorageLevel.MEMORY_AND_DISK
+    )
   }
 
   def createInitMessages(sampleSize: Int)(vertex: CTRWVertex) = {

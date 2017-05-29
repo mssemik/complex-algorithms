@@ -31,7 +31,7 @@ object Pregel extends Serializable {
       prevG = g
       g = g.outerJoinVertices(messages)(vpred(round)).cache
 
-      if (round % 20 == 0) { g.checkpoint(); g.vertices.count }
+      if (round % 20 == 0) { g.vertices.localCheckpoint(); g.edges.localCheckpoint(); g.vertices.count; g.edges.count() }
 
       val oldMessages = messages
       round += 1

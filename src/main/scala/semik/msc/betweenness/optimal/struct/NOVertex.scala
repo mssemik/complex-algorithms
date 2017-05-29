@@ -24,6 +24,8 @@ class NOVertex(val vertexId: VertexId,
 
   lazy val lowestSucc = succ.getOrElse(Array.empty).sorted.headOption
 
+  lazy val eccentricity = if (bfsMap.isEmpty) 0 else bfsMap.map({ case (id, v) => v.distance}).max
+
   def withDfsPointer(pointer: Option[DFSPointer]) =
     NOVertex(vertexId, bfsMap, pred, succ, pointer)
 

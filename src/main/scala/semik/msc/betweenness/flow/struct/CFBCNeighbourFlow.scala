@@ -23,8 +23,8 @@ object CFBCNeighbourFlow extends Serializable {
             sumOfPotential: Double = .0,
             sumOfDifferences: Double = .0,
             numberOfFlows: Int = 0,
-            allCompleted: Boolean = false,
-            anyCompleted: Boolean = false
+            allCompleted: Boolean = true,
+            anyCompleted: Boolean = true
            ): CFBCNeighbourFlow = new CFBCNeighbourFlow(src, dst, sumOfPotential, sumOfDifferences, numberOfFlows, allCompleted, anyCompleted)
 
   def apply(flows: Iterable[CFBCFlow], vertex: CFBCVertex): CFBCNeighbourFlow = {

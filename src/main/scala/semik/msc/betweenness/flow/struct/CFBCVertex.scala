@@ -35,7 +35,7 @@ class CFBCVertex(val id: VertexId, val degree: Int, val bc: Double, val sampleVe
     new CFBCVertex(id, degree, bc, sampleVertices, (fls, flows._2), processedFlows)
 
   def removeFlows(toRemove: Seq[CFBCFlow]) = {
-    val newFlows = flows._1.diff(toRemove)
+    val newFlows = flows._1.diff(toRemove).map(_.countdownVitality)
     new CFBCVertex(id, degree, bc, sampleVertices, (newFlows, flows._2), processedFlows)
   }
 
