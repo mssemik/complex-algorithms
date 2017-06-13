@@ -24,14 +24,14 @@ class ContinuousTimeRandomWalk[VD, ED: ClassTag](graph: Graph[VD, ED], initTemp:
       ctrwProcessor.createInitMessages(sampleSize),
       ctrwProcessor.applyMessages,
       ctrwProcessor.sendMessageCtx,
-      ctrwProcessor.mergeMessages, log)
+      ctrwProcessor.mergeMessages, opName = "CTRW")
 
-    val vertices = resultGraph.vertices
+    val vertices = resultGraph.mapVertices((id, v) => v).vertices
 
     val res = vertices.flatMap({ case (vertexId, data) => data.messages.map(s => (s.src, vertexId))})
       .aggregateByKey(List[VertexId]())((l, s) => l :+ s, _ ++ _)
 
-    res.localCheckpoint
+    res.checkpoint()
     res.count
     resultGraph.unpersistVertices(false)
     resultGraph.edges.unpersist(false)
@@ -39,6 +39,5 @@ class ContinuousTimeRandomWalk[VD, ED: ClassTag](graph: Graph[VD, ED], initTemp:
     VertexRDD(res)
   }
 
-  def log(v: VertexRDD[List[CTRWMessage]]) = {} //println(s"numOfMsg: ${v.aggregate(0)({ case (l, (id, v)) => l + v.size }, _ + _)}")
 }
 

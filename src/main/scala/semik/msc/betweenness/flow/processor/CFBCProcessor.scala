@@ -18,15 +18,8 @@ class CFBCProcessor[VD, ED: ClassTag](graph: Graph[VD, ED], flowGenerator: FlowG
   lazy val numOfVertices = graph.ops.numVertices
 
   private def prepareRawGraph = {
-    val simpleGraph = GraphSimplifier.simplifyGraph(graph)((m, _) => m)
-    val degrees = simpleGraph.ops.degrees
-    val temp = simpleGraph.outerJoinVertices(degrees)((id, _, deg) => CFBCVertex(id, deg.getOrElse(0)))
-    Graph[CFBCVertex, ED](
-      vertices = temp.vertices,
-      edges = temp.edges,
-      vertexStorageLevel = StorageLevel.MEMORY_AND_DISK,
-      edgeStorageLevel = StorageLevel.MEMORY_AND_DISK
-    )
+    val degrees = graph.ops.degrees
+    graph.outerJoinVertices(degrees)((id, _, deg) => CFBCVertex(id, deg.getOrElse(0)))
   }
 
   def createFlow(graph: Graph[CFBCVertex, ED]) = {
@@ -35,26 +28,6 @@ class CFBCProcessor[VD, ED: ClassTag](graph: Graph[VD, ED], flowGenerator: FlowG
         case Some(flow) => data.addNewFlow(flow)
         case None => data
       })
-
-    //    val msg1 = VertexRDD(newGrapg.vertices.flatMap({ case (id, d) => d.flows.filter(_.potential == 1.0d)
-    //      .map(c => (c.dst, id))}).aggregateByKey(List.empty[VertexId])((l, t) => t +: l, _ ++ _))
-    //
-    //    val result = newGrapg.outerJoinVertices(msg1)((id, data, msgs) =>
-    //      msgs match {
-    //        case Some(list) =>
-    //          val conflicted = data.correlatedVertices.intersect(list)
-    //          val flowsToRemove = conflicted.filter(_ > id)
-    //          val correctedFlows = data.flows.filterNot(f => flowsToRemove.contains(f.dst) && f.src == id && f.potential == 1.0d)
-    //          val correlatedVertices = (data.correlatedVertices ++ list).distinct
-    //          CFBCVertex(id, data.sampleVertices, correctedFlows, correlatedVertices)
-    //        case None => data
-    //      }).cache()
-    //
-    //    result.vertices.count
-    //    result.edges.count
-    //
-    //    newGrapg.unpersist(false)
-    //    result
   }
 
   def joinReceivedFlows(vertexId: VertexId, vertex: CFBCVertex, msg: Array[CFBCFlow]) =
@@ -67,26 +40,22 @@ class CFBCProcessor[VD, ED: ClassTag](graph: Graph[VD, ED], flowGenerator: FlowG
       val newPotential = (nbhFlow.sumOfPotential + contextFlow.supplyValue(id)) / data.degree
       val potentialDiff = Math.abs(contextFlow.potential - newPotential)
       val completed = contextFlow.completed || potentialDiff < epsilon
-      CFBCFlow(contextFlow.src, contextFlow.dst, newPotential, completed)
+      CFBCFlow(contextFlow.src, contextFlow.dst, newPotential, completed, contextFlow.aliveThrough)
     }
 
     val newFlows = for (nb <- data.neighboursFlows) yield {
       val flowOpt = data.flowsMap.get(nb.key)
       flowOpt match {
-        case Some(flow) if flow.completed && nb.allCompleted => Some(flow)
+//        case Some(flow) if flow.completed && nb.allCompleted => Some(flow)
         case Some(flow) => Some(updateFlow(flow, nb))
         case None if !nb.anyCompleted => Some(updateFlow(CFBCFlow.empty(nb.key._1, nb.key._2), nb))
         case _ => None
       }
     }
 
-    val k1 = data.vertexFlows.map(f => (f.key, f)).toMap
     val k2 = newFlows.filter(_.nonEmpty).map(f => (f.get.key, f.get)).toMap
 
-    val k3 = k1.filterKeys(k => !k2.contains(k))
-    val kk = k3 ++ k2
-
-    data.updateFlows(kk.values.toArray)
+    data.updateFlows((data.flowsMap ++ k2).values.toArray)
   }
 
   def computeBetweenness(vertexId: VertexId, vertex: CFBCVertex) = {

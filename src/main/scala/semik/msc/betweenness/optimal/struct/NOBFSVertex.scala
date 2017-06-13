@@ -1,13 +1,40 @@
 package semik.msc.betweenness.optimal.struct
 
+import semik.msc.betweenness.optimal.struct.messages.{BCAggregationMessage, BFSBCConfirmMessage}
+
 /**
   * Created by mth on 5/6/17.
   */
-class NOBFSVertex(val startRound: Long, val distance: Double, val sigma: Int, val psi: Double) extends Serializable {
-  def updateBC(p: Double) = NOBFSVertex(startRound, distance, sigma, psi + p)
+class NOBFSVertex(val startRound: Long, val distance: Double, val sigma: Int, val psi: Double, val numOfSucc: Int, val receivedAggrResp: Int, val state: Int) extends Serializable {
+  def updateBC(p: Double) = {
+    NOBFSVertex(startRound, distance, sigma, psi + p, numOfSucc, receivedAggrResp + 1, state)
+  }
+
+  def updateBC(ps: Iterable[Double]) = {
+    NOBFSVertex(startRound, distance, sigma, psi + ps.sum, numOfSucc, receivedAggrResp + ps.size, state)
+  }
+
+  def setToConfirm =
+    NOBFSVertex(startRound, distance, sigma, psi, numOfSucc, receivedAggrResp, NOBFSVertex.toConfirm)
+
+  def waitForConfirm =
+    NOBFSVertex(startRound, distance, sigma, psi, numOfSucc, receivedAggrResp, NOBFSVertex.waitForConfirm)
+
+  def applyConfirmations(confirm: Iterable[BFSBCConfirmMessage]) =
+    NOBFSVertex(startRound, distance, sigma, psi, numOfSucc + confirm.size, receivedAggrResp, NOBFSVertex.confirmed)
+
+  def updateReceivedAggr(msg: Iterable[BCAggregationMessage]) =
+    NOBFSVertex(startRound, distance, sigma, psi, numOfSucc, receivedAggrResp + msg.size, state)
+
+  val isCompleted = numOfSucc == receivedAggrResp && state == NOBFSVertex.confirmed
 }
 
 object NOBFSVertex extends Serializable {
-  def apply(startRound: Long, distance: Double, sigma: Int, psi: Double = .0): NOBFSVertex =
-    new NOBFSVertex(startRound, distance, sigma, psi)
+  def apply(startRound: Long, distance: Double, sigma: Int, psi: Double = .0, numOfSucc: Int = 0, receivedAggrResp: Int = 0, state: Int): NOBFSVertex =
+    new NOBFSVertex(startRound, distance, sigma, psi, numOfSucc, receivedAggrResp, state)
+
+  val idle = 0
+  val toConfirm = 1
+  val waitForConfirm = 2
+  val confirmed = 3
 }

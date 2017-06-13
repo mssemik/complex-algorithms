@@ -24,21 +24,15 @@ class EdmondsBC[VD, ED: ClassTag](graph: Graph[VD, ED]) extends Serializable {
   lazy val edmondsBFSProcessor = new BFSShortestPath[EdmondsVertex, ED, (List[VertexId], Int, Int)](new EdmondsBCPredicate, new EdmondsBCProcessor)
 
   private def prepareRawGraph = {
-    val simpleGraph = GraphSimplifier.simplifyGraph(graph)((m, _) => m)
-    val targetGraph = simpleGraph.mapVertices((vId, attr) => EdmondsVertex())
-    Graph[EdmondsVertex, ED](
-      vertices = targetGraph.vertices,
-      edges = targetGraph.edges,
-      edgeStorageLevel = StorageLevel.MEMORY_AND_DISK,
-      vertexStorageLevel = StorageLevel.MEMORY_AND_DISK)
+    graph.mapVertices((vId, attr) => EdmondsVertex())
   }
 
   def computeBC = {
 
-    var betweennessVector: Option[VertexRDD[Double]] = None
-
     val verticesIds = simpleGraph.vertices.map({ case (vertexId, _) => vertexId }).cache
     val verticesIterator = verticesIds.toLocalIterator
+    var betweennessVector: VertexRDD[Double] = simpleGraph.vertices.mapValues(_ => .0).cache()
+    var i = 0
 
     while (verticesIterator.hasNext) {
       val processedVertex = verticesIterator.next
@@ -51,31 +45,29 @@ class EdmondsBC[VD, ED: ClassTag](graph: Graph[VD, ED]) extends Serializable {
       val previousBetweennessVector = betweennessVector
       betweennessVector = updateBC(betweennessVector, partialBetweennessVector)
 
-      betweennessVector match { case Some(vector) => vector.localCheckpoint; vector.count }
-      previousBetweennessVector match { case Some(vector) => vector.unpersist(false); case None => }
+      betweennessVector.checkpoint()
+      betweennessVector.count
+      previousBetweennessVector.unpersist(false)
 
       bfs.unpersist(false)
       computedGraph.unpersistVertices(false)
       computedGraph.edges.unpersist(false)
+
+      if (i % 10 == 0) println(s"Edm -> $i")
+      i = i + 1
     }
 
     verticesIds.unpersist(false)
     finalize(betweennessVector)
   }
 
-  private def updateBC(bcVector: Option[VertexRDD[Double]], partialBc: VertexRDD[Double]) =
-    bcVector match {
-      case Some(v) =>
-        val bcVector = v.innerJoin(partialBc)((vId, bc1, bc2) => bc1 + bc2)
-        Some(bcVector)
-      case None => Some(partialBc)
-    }
+  private def updateBC(bcVector: VertexRDD[Double], partialBc: VertexRDD[Double]) =
+    bcVector.innerJoin(partialBc)((vId, bc1, bc2) => bc1 + bc2)
 
-  private def finalize(bcVector: Option[VertexRDD[Double]]) = {
-    val bc = bcVector.get
-    val result = normalizer.normalize(bc).cache
+  private def finalize(bcVector: VertexRDD[Double]) = {
+    val result = normalizer.normalize(bcVector.mapValues(_ / 2)).cache
     result.count
-    bc.unpersist(false)
+    bcVector.unpersist(false)
     result
   }
 }

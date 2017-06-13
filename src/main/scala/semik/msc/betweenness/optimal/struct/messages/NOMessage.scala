@@ -12,4 +12,5 @@ trait NOMessage[MVT] extends Serializable {
   def isExpand = false
   def isConfirm = false
   def isDFSPointer = false
+  def isAggregation = false
 }

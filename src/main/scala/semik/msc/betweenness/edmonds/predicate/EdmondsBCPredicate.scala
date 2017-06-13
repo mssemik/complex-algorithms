@@ -10,7 +10,7 @@ import semik.msc.predicate.vertex.VertexPredicate
 class EdmondsBCPredicate extends VertexPredicate[EdmondsVertex, (List[VertexId], Int, Int)] {
 
   override def getInitialData(vertexId: VertexId, attr: EdmondsVertex): (VertexId) => EdmondsVertex =
-    (vId) => if (vId == vertexId) EdmondsVertex(List(vId), 1) else EdmondsVertex()
+    (vId) => if (vId == vertexId) EdmondsVertex(List(vId), 1, 0) else EdmondsVertex()
 
   override def applyMessages(vertexId: VertexId, date: EdmondsVertex, message: (List[VertexId], Int, Int)): EdmondsVertex =
     if (date.explored) date else EdmondsVertex(message._1, message._2, message._3)

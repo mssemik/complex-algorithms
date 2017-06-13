@@ -5,7 +5,13 @@ import org.apache.spark.graphx.VertexId
 /**
   * Created by mth on 4/23/17.
   */
-class CFBCVertex(val id: VertexId, val degree: Int, val bc: Double, val sampleVertices: Array[VertexId], val flows: (Array[CFBCFlow], Iterable[CFBCNeighbourFlow]), val processedFlows: Int) extends Serializable {
+class CFBCVertex(
+                  val id: VertexId,
+                  val degree: Int,
+                  val bc: Double,
+                  val sampleVertices: Array[VertexId],
+                  val flows: (Array[CFBCFlow], Iterable[CFBCNeighbourFlow]),
+                  val processedFlows: Int) extends Serializable {
   lazy val relatedFlows = flows._1.filter(f => f.dst == id || f.src == id)
   lazy val availableSamples = sampleVertices/*.diff(flows._1.filter(_.src == id).map(_.dst) :+ id)*/
 
@@ -15,6 +21,8 @@ class CFBCVertex(val id: VertexId, val degree: Int, val bc: Double, val sampleVe
 
   val vertexFlows = flows._1
   val neighboursFlows = flows._2
+
+  def isFinalized(k: Int) = sampleVertices.isEmpty || processedFlows >= k
 
   def getFlow(key: (VertexId, VertexId)) = flowsMap.getOrElse(key, CFBCFlow.empty(key._1, key._2))
 

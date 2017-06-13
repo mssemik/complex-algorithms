@@ -18,7 +18,7 @@ class NearlyOptimalBCAggregator[ED](graph: Graph[NOVertex, ED]) extends Serializ
       prepareVertices,
       applyMessages,
       sendMessages(diameter.toInt),
-      _ ++ _, m => {}, 2
+      _ ++ _, 2, "NOBC - aggregate"
     )
 
     result.mapVertices((id, v) => v.bfsMap.map({ case (src, vbc) => if (src == id) 0 else vbc.psi * vbc.sigma.toDouble}).sum / 2).vertices
@@ -41,7 +41,7 @@ class NearlyOptimalBCAggregator[ED](graph: Graph[NOVertex, ED]) extends Serializ
       val dstAttr = triplet.vertexAttr(dstId)
 
       srcAttr.bfsMap.filter({ case (key, v) => v.startRound + diameter - v.distance == round && dstAttr.bfsMap.get(key).get.distance == (v.distance - 1) })
-        .foreach({ case (key, v) => send(List(BCAggregationMessage(key, 1.0 / v.sigma.toDouble + v.psi))) })
+        .foreach({ case (key, v) => send(List(BCAggregationMessage(key, srcAttr.vertexId, 1.0 / v.sigma.toDouble + v.psi))) })
     }
 
     val sendMsg = sendAggregationMsg(ctx.toEdgeTriplet) _
