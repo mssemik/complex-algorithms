@@ -1,10 +1,8 @@
 package semik.msc.betweenness.flow.processor
 
 import org.apache.spark.graphx.{EdgeTriplet, Graph, VertexId, VertexRDD}
-import org.apache.spark.storage.StorageLevel
 import semik.msc.betweenness.flow.generator.FlowGenerator
 import semik.msc.betweenness.flow.struct.{CFBCFlow, CFBCNeighbourFlow, CFBCVertex}
-import semik.msc.utils.GraphSimplifier
 
 import scala.reflect.ClassTag
 

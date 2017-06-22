@@ -104,7 +104,7 @@ class ExperimentManager {
       .set("spark.driver.memory", "8g")
 //        .set("spark.eventLog.enabled", "true")
 //      .set("spark.eventLog.dir", "/home/msemik/logs")
-      .set("spark.executor.memory", "50g")
+      .set("spark.executor.memory", "5g")
       .set("spark.storage.memoryFraction", "0.9")
 
     val sc = new SparkContext(sConf)

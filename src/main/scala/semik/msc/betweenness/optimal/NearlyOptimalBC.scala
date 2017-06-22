@@ -28,8 +28,6 @@ class NearlyOptimalBC[VD, ED: ClassTag](graph: Graph[VD, ED]) extends Serializab
       _ ++ _, 2, "NOBC - compute"
     )
 
-//    val bcAggregator = new NearlyOptimalBCAggregator[ED](sigmaGraph)
-
     val bcvector = sigmaGraph.vertices.mapValues(v => v.bc / 2)
 
     normalizer.normalize(bcvector)

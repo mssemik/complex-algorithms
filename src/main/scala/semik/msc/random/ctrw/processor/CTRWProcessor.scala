@@ -1,10 +1,8 @@
 package semik.msc.random.ctrw.processor
 
 import org.apache.spark.graphx._
-import org.apache.spark.storage.StorageLevel
 import semik.msc.factory.Factory
 import semik.msc.random.ctrw.struct.{CTRWMessage, CTRWVertex}
-import semik.msc.utils.GraphSimplifier
 
 import scala.reflect.ClassTag
 

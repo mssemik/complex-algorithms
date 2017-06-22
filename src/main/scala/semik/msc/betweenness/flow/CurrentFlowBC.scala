@@ -21,7 +21,7 @@ class CurrentFlowBC[VD, ED: ClassTag](graph: Graph[VD, ED], flowGenerator: FlowG
   def computeBC(phi: Int, epsilon: Double) = {
 
     val ctrw = new ContinuousTimeRandomWalk[CFBCVertex, ED](cfbcProcessor.initGraph)
-    val randomVertices = ctrw.sampleVertices(Math.ceil((cfbcProcessor.numOfVertices / k) * 2) toInt)
+    val randomVertices = ctrw.sampleVertices(Math.ceil(Math.max(1, k / 10)) toInt)
 
     val initGraph = cfbcProcessor.initGraph.ops.joinVertices(randomVertices)((id, v, m) => {
       val sample = Random.shuffle(m.distinct.diff(List(id)))
@@ -38,7 +38,7 @@ class CurrentFlowBC[VD, ED: ClassTag](graph: Graph[VD, ED], flowGenerator: FlowG
     var msgCount = msg.filter({ case (id, m) => m.nonEmpty }).count
     var unfinalizedVertices = true
 
-    while (/*msgCount > 0 || */unfinalizedVertices) {
+    while (msgCount > 0 || unfinalizedVertices) {
       val g2 = cfbcProcessor.preMessageExtraction(epsilon)(g1, msg).cache
 
       if (i % 20 == 0) { g2.checkpoint(); g2.vertices.count(); g2.edges.count() }
@@ -55,18 +55,13 @@ class CurrentFlowBC[VD, ED: ClassTag](graph: Graph[VD, ED], flowGenerator: FlowG
       g1.vertices.count
       g1.edges.count
 
-      unfinalizedVertices = g1.vertices.mapValues(v => !v.isFinalized(k)).aggregate(false)((acc, v) => acc || v._2, _ || _)
+      unfinalizedVertices = g1.vertices.aggregate(false)((acc, v) => acc || !v._2.isFinalized(k), _ || _)
 
       g2.unpersist(false)
       g3.unpersist(false)
       oldMsg.unpersist(false)
 
       if (i % 10 == 0) println(s"CFBC -> $i")
-
-      if (i % 20 == 0) println("Checkpoint round")
-      else {
-        println(s"NumOfFlowsToActivate: ${getNumberOfFlows(g1)}, finishedVerts: ${getNumOfActiveVertices(g1)}")
-      }
 
       i = i + 1
     }

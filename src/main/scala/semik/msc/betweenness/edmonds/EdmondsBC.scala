@@ -1,13 +1,11 @@
 package semik.msc.betweenness.edmonds
 
 import org.apache.spark.graphx._
-import org.apache.spark.storage.StorageLevel
 import semik.msc.betweenness.edmonds.predicate.EdmondsBCPredicate
 import semik.msc.betweenness.edmonds.processor.EdmondsBCProcessor
 import semik.msc.betweenness.edmonds.struct.EdmondsVertex
 import semik.msc.betweenness.normalizer.BCNormalizer
 import semik.msc.bfs.BFSShortestPath
-import semik.msc.utils.GraphSimplifier
 
 import scala.reflect.ClassTag
 
@@ -62,7 +60,7 @@ class EdmondsBC[VD, ED: ClassTag](graph: Graph[VD, ED]) extends Serializable {
   }
 
   private def updateBC(bcVector: VertexRDD[Double], partialBc: VertexRDD[Double]) =
-    bcVector.innerJoin(partialBc)((vId, bc1, bc2) => bc1 + bc2)
+    bcVector.innerJoin(partialBc)((vId, bc1, bc2) => bc1 + bc2).cache()
 
   private def finalize(bcVector: VertexRDD[Double]) = {
     val result = normalizer.normalize(bcVector.mapValues(_ / 2)).cache
