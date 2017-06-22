@@ -44,7 +44,6 @@ class CFBCProcessor[VD, ED: ClassTag](graph: Graph[VD, ED], flowGenerator: FlowG
     val newFlows = for (nb <- data.neighboursFlows) yield {
       val flowOpt = data.flowsMap.get(nb.key)
       flowOpt match {
-//        case Some(flow) if flow.completed && nb.allCompleted => Some(flow)
         case Some(flow) => Some(updateFlow(flow, nb))
         case None if !nb.anyCompleted => Some(updateFlow(CFBCFlow.empty(nb.key._1, nb.key._2), nb))
         case _ => None

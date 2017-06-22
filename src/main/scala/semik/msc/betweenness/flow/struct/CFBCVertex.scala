@@ -13,7 +13,7 @@ class CFBCVertex(
                   val flows: (Array[CFBCFlow], Iterable[CFBCNeighbourFlow]),
                   val processedFlows: Int) extends Serializable {
   lazy val relatedFlows = flows._1.filter(f => f.dst == id || f.src == id)
-  lazy val availableSamples = sampleVertices/*.diff(flows._1.filter(_.src == id).map(_.dst) :+ id)*/
+  lazy val availableSamples = sampleVertices
 
   lazy val vertexPhi = flows._1.count(_.src == id)
 

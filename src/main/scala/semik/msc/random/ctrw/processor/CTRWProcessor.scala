@@ -14,14 +14,8 @@ class CTRWProcessor[VD, ED: ClassTag](graph: Graph[VD, ED], factory: Factory[CTR
   lazy val initGraph = prepareRawGraph
 
   private def prepareRawGraph = {
-//    val simpleGraph = GraphSimplifier.simplifyGraph(graph)((m, _) => m)
     val nbsIds = graph.ops.collectNeighborIds(EdgeDirection.Either)
     graph.outerJoinVertices(nbsIds)((id, _, nbs) => CTRWVertex(id, nbs.getOrElse(Array.empty), Array.empty, initialized = false))
-//    Graph[CTRWVertex, ED](
-//      temp.vertices, temp.edges,
-//      vertexStorageLevel = StorageLevel.MEMORY_AND_DISK,
-//      edgeStorageLevel = StorageLevel.MEMORY_AND_DISK
-//    )
   }
 
   def createInitMessages(sampleSize: Int)(vertex: CTRWVertex) = {
